@@ -16,6 +16,7 @@
 package ai.castor.idf;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
@@ -85,7 +86,7 @@ public class IDFScorer {
   }
 
   public void getTermIDF(String sentence) throws ParseException {
-    Analyzer analyzer = new EnglishAnalyzer();
+    Analyzer analyzer = new EnglishAnalyzer(CharArraySet.EMPTY_SET);
 
     QueryParser qp = new QueryParser(FIELD_BODY, analyzer);
     ClassicSimilarity similarity = new ClassicSimilarity();
