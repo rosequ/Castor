@@ -52,6 +52,9 @@ public class IDFScorer {
     // optional arguments
     @Option(name = "-analyze", usage = "passage scores")
     public boolean analyze = false;
+
+    @Option(name = "-sentence", metaVar = "[path]", required = true, usage = "sentence whose terms need idf")
+    public String sentence;
   }
 
   private final IndexReader reader;
@@ -81,15 +84,25 @@ public class IDFScorer {
     }
   }
 
-  public void getTermIDF(String term) throws ParseException, IOException {
-    EnglishAnalyzer analyzer = new EnglishAnalyzer(StopFilter.makeStopSet(stopWords));
+  public void getTermIDF(String sentence) throws ParseException {
+    Analyzer analyzer = new EnglishAnalyzer();
+
     QueryParser qp = new QueryParser(FIELD_BODY, analyzer);
     ClassicSimilarity similarity = new ClassicSimilarity();
 
-    TermQuery q = (TermQuery) qp.parse(term);
-    Term t = q.getTerm();
+    String escapedQuery = qp.escape(sentence);
+    Query question = qp.parse(escapedQuery);
+    String[] questionTerms = question.toString().trim().split("\\s+");
 
-    System.out.println(term + "\t" + similarity.idf(reader.docFreq(t), reader.numDocs()));
+    for (String term :  questionTerms) {
+      try {
+        TermQuery q = (TermQuery) qp.parse(term);
+        Term t = q.getTerm();
+        System.out.println(term + "\t" + similarity.idf(reader.docFreq(t), reader.numDocs()));
+      } catch (Exception e) {
+        continue;
+      }
+    }
   }
 
   public double calcIDF(String query, String answer, boolean analyze) throws ParseException {
@@ -177,5 +190,9 @@ public class IDFScorer {
 
     IDFScorer g = new IDFScorer(qaArgs);
     g.writeToFile(qaArgs);
+
+    if(!qaArgs.sentence.isEmpty()) {
+      g.getTermIDF(qaArgs.sentence);
+    }
   }
 }
