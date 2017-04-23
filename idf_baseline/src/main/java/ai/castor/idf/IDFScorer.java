@@ -81,6 +81,17 @@ public class IDFScorer {
     }
   }
 
+  public void getTermIDF(String term) throws ParseException, IOException {
+    EnglishAnalyzer analyzer = new EnglishAnalyzer(StopFilter.makeStopSet(stopWords));
+    QueryParser qp = new QueryParser(FIELD_BODY, analyzer);
+    ClassicSimilarity similarity = new ClassicSimilarity();
+
+    TermQuery q = (TermQuery) qp.parse(term);
+    Term t = q.getTerm();
+
+    System.out.println(term + "\t" + similarity.idf(reader.docFreq(t), reader.numDocs()));
+  }
+
   public double calcIDF(String query, String answer, boolean analyze) throws ParseException {
     Analyzer analyzer;
     if (analyze) {
