@@ -91,10 +91,9 @@ public class IDFScorer {
     ClassicSimilarity similarity = new ClassicSimilarity();
 
     String escapedQuery = qp.escape(sentence);
-    Query question = qp.parse(escapedQuery);
-    String[] questionTerms = question.toString().trim().split("\\s+");
+    List<String> originalTerms = Arrays.asList(escapedQuery.split("\\s+"));
 
-    for (String term :  questionTerms) {
+    for (String term :  originalTerms) {
       try {
         TermQuery q = (TermQuery) qp.parse(term);
         Term t = q.getTerm();
