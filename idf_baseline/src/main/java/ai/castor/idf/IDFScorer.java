@@ -189,10 +189,11 @@ public class IDFScorer {
     }
 
     IDFScorer g = new IDFScorer(qaArgs);
-    g.writeToFile(qaArgs);
-
+    
     if(!qaArgs.sentence.isEmpty()) {
       g.getTermIDF(qaArgs.sentence);
+    } else {
+      g.writeToFile(qaArgs);
     }
   }
 }
