@@ -13,7 +13,7 @@ import torch
 from nltk.tokenize import TreebankWordTokenizer
 from torch.autograd import Variable
 
-from sm_model import model
+from sm_cnn import model
 from external_features import compute_overlap, compute_idf_weighted_overlap, stopped
 
 sys.modules['model'] = model
@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
             sentence_scores = smmodel.rerank_candidate_answers(question, q_answers)
             for score, sentence in sentence_scores:
-                print('{} Q0 {} 0 {} sm_model_bridge.{}.run'.format(
+                print('{} Q0 {} 0 {} sm_cnn_bridge.{}.run'.format(
                     qid,
                     docid_counter,
                     score,
