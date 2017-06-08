@@ -11,8 +11,8 @@ import torch
 
 import utils
 from external_features import stopped, stemmed, compute_idf_weighted_overlap, compute_overlap,\
-    get_qadata_only_idf, set_external_features_as_per_paper,\
-    set_external_features_as_per_paper_and_stem
+    get_qadata_only_idf, set_external_features_as_per_paper
+    
 from train import Trainer
 from model import QAModel
 
@@ -86,9 +86,7 @@ if __name__ == "__main__":
     # external features related arguments
     ap.add_argument('--no-ext-feats', action="store_true", \
         help="will not include external features in the model")
-    ap.add_argument('--paper-ext-feats', action="store_true", default=True, \
-        help="external features as per the paper")
-    ap.add_argument('--paper-ext-feats-stem', action="store_true", \
+    ap.add_argument('--paper-ext-feats', action="store_true", \
         help="external features as per the paper")
     # system arguments
     ap.add_argument('--cuda', action='store_true', help='use CUDA if available')
@@ -99,7 +97,6 @@ if __name__ == "__main__":
     ap.add_argument('--filter_width', type=int, default=5, help="number of convolution channels")
     ap.add_argument('--eta', help='Initial learning rate', default=0.001, type=float)
     ap.add_argument('--mom', help='SGD Momentum', default=0.0, type=float)
-    ap.add_argument('--train', help='switches to train set', action="store_true")
     # epoch related arguments
     ap.add_argument('--epochs', type=int, default=25, help="number of training epochs")
     ap.add_argument('--patience', type=int, default=5, \
@@ -110,12 +107,8 @@ if __name__ == "__main__":
     ap.add_argument('--num_conv_filters', default=100, type=int, \
         help="the number of convolution channels (lesser is faster)")
     ap.add_argument('--no_loss_reg', help="no loss regularization", action="store_true")
-    ap.add_argument('--test_on_each_epoch', action="store_true", \
-        help='runs test on each epoch to track final performance')
     ap.add_argument("--skip-training", help="will load pre-trained model", action="store_true")
     ap.add_argument("--run-name-prefix", help="will output train|dev|test runs with provided prefix")
-    ap.add_argument("--stop-punct", help='removes punctuation', action="store_true")
-    ap.add_argument("--dash-split", help="split words containing hyphens", action="store_true")
     ap.add_argument("--index-for-corpusIDF", help="fetches idf from Index. provide index path. will\
     generate a vocabFile")
 
@@ -126,13 +119,10 @@ if __name__ == "__main__":
     torch.set_num_threads(args.num_threads)
 
     train_set, dev_set, test_set = 'train-all', 'raw-dev', 'raw-test'
-    if args.train:
-        train_set, dev_set, test_set = 'train', 'clean-dev', 'clean-test'
 
     # cache word embeddings
     cache_file = os.path.splitext(args.word_vectors_file)[0] + '.cache'
     utils.cache_word_embeddings(args.word_vectors_file, cache_file)
-
     vocab_size, vec_dim = utils.load_embedding_dimensions(cache_file)
 
     # instantiate model
@@ -151,10 +141,7 @@ if __name__ == "__main__":
         ext_feats_for_splits = \
             set_external_features_as_per_paper(trainer, args.index_for_corpusIDF)
         # ^^ we are saving the features to be used while testing at the end of training
-    elif args.paper_ext_feats_stem:
-        logger.info("--paper-ext-feats-stem")
-        ext_feats_for_splits = \
-            set_external_features_as_per_paper_and_stem(trainer, args.index_for_corpusIDF)
+    
 
 
     if not args.skip_training:
@@ -178,11 +165,6 @@ if __name__ == "__main__":
                 QAModel.save(net, args.model_outfile)
                 logger.info('Achieved better dev_map ... saved model')
 
-            if args.test_on_each_epoch:
-                test_scores = trainer.test(test_set, args.batch_size)
-                map, mrr = compute_map_mrr(args.dataset_folder, test_set, test_scores)
-                logger.info("------- MAP {}, MRR {}".format(map, mrr))
-
             if (i - best_model) >= args.patience:
                 logger.warning('No improvement since the last {} epochs. Stopping training'\
                                .format(i - best_model))
@@ -196,7 +178,7 @@ if __name__ == "__main__":
 
     for split in [test_set, dev_set]:
         evaluator.load_input_data(args.dataset_folder, cache_file, None, None, split)
-        if args.paper_ext_feats or args.paper_ext_feats_stem:
+        if args.paper_ext_feats:
             evaluator.data_splits[split][-1] = ext_feats_for_splits[split]
             #set_external_features_as_per_paper(evaluator)
         split_scores = evaluator.test(split, args.batch_size)
