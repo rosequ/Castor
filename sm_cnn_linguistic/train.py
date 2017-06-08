@@ -102,43 +102,29 @@ class Trainer(object):
 
         total_loss = 0.0
         total_correct = 0.0
-        num_batches = np.ceil(len(questions)/batch_size)
+        
         y_pred = np.zeros(len(questions))
         ypc = 0
 
-        for k in range(int(num_batches)):
-            batch_start = k * batch_size
-            batch_end = (k+1) * batch_size
+        for k in range(len(questions)):
             # convert raw questions and sentences to tensors
-            x_q = self.get_tensorized_input_embeddings_matrix(questions[batch_start:batch_end], word_vectors, vec_dim)[0]
-            x_a = self.get_tensorized_input_embeddings_matrix(sentences[batch_start:batch_end], word_vectors, vec_dim)[0]
-            ys = self.get_tensorized_labels(labels[batch_start:batch_end])[0]
-
-            q_deps_batch, a_deps_batch = [], []
-            for b in range(batch_start, batch_end):
-                q_deps_batch.append(get_dependency_reordered(questions[b]))
-                a_deps_batch.append(get_dependency_reordered(sentences[b]))
-
-            x_qdeps = self.get_tensorized_input_embeddings_matrix(q_deps_batch, word_vectors, vec_dim)[0]
-            x_adeps = self.get_tensorized_input_embeddings_matrix(a_deps_batch, word_vectors, vec_dim)[0]
+            x_q = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
+            x_a = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
+            ys = Variable(torch.LongTensor([labels[k]]))
+            x_qdeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(questions[k]), word_vectors, vec_dim)
+            x_adeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(sentences[k]), word_vectors, vec_dim)
 
 
             pred = self.model(x_q, x_a, x_qdeps, x_adeps)
             loss = self.criterion(pred, ys)
             pred = torch.exp(pred)
             total_loss += loss
-            # total_correct += self.pred_equals_y(pred, y)
-
+            
             y_pred[ypc] = pred.data.squeeze()[1]
             # ^ we want to score for relevance, NOT the predicted class
             ypc += 1
-            
-        # logger.info('{}_correct {}'.format(set_folder, total_correct))
-        # logger.info('{}_loss {}'.format(set_folder, total_loss.data[0]))
-        logger.info('{} total {}'.format(set_folder, len(labels)))
-        # logger.info('{}_loss = {:.4f}, acc = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels), float(total_correct)/len(labels))
-        #logger.info('{}_loss = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels)))
 
+        logger.info('{} total {}'.format(set_folder, len(labels)))
         return y_pred
 
 
@@ -153,25 +139,15 @@ class Trainer(object):
         self.model.train()
 
         train_loss, train_correct = 0., 0.
-        num_batches = np.ceil(len(questions)/float(batch_size))
+        for k in tqdm(range(len(questions))):
 
-        for k in tqdm(range(int(num_batches))):
-            batch_start = k * batch_size
-            batch_end = (k+1) * batch_size
-
-            # TODO: since we are using single instances to train, may be we should remove batching code
-
-            x_q = self.get_tensorized_input_embeddings_matrix(questions[batch_start:batch_end], word_vectors, vec_dim)[0]
-            x_a = self.get_tensorized_input_embeddings_matrix(sentences[batch_start:batch_end], word_vectors, vec_dim)[0]
-            ys = self.get_tensorized_labels(labels[batch_start:batch_end])[0]
-
-            q_deps_batch, a_deps_batch = [], []
-            for b in range(batch_start, batch_end):
-                q_deps_batch.append(get_dependency_reordered(questions[b]))
-                a_deps_batch.append(get_dependency_reordered(sentences[b]))
-
-            x_qdeps = self.get_tensorized_input_embeddings_matrix(q_deps_batch, word_vectors, vec_dim)[0]
-            x_adeps = self.get_tensorized_input_embeddings_matrix(a_deps_batch, word_vectors, vec_dim)[0]
+            x_q = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
+            x_a = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
+            ys = Variable(torch.LongTensor([labels[k]]))
+            # x_qdeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(questions[k]), word_vectors, vec_dim)
+            # x_adeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(sentences[k]), word_vectors, vec_dim)
+            x_qdeps = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
+            x_adeps = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
 
             batch_loss, batch_correct = self._train(x_q, x_a, x_qdeps, x_adeps, ys)
 
@@ -181,39 +157,28 @@ class Trainer(object):
                 break
             
         logger.info('train_loss {}'.format(train_loss))
-        logger.info('train_correct {}'.format(train_correct))
-        logger.info('total training batches = {}'.format(num_batches))
+        logger.info('train_correct {}'.format(train_correct))        
         logger.info('train_loss = {:.4f}'.format(
-            train_loss/num_batches
+            train_loss/len(questions)
         ))
         logger.info('training time = {:.3f} seconds'.format(time.time() - train_start_time))
-        return train_correct/num_batches
+        return train_correct/len(questions)
 
-    def get_tensorized_labels(self, batch_labels):
-        y = torch.LongTensor(len(batch_labels)).type(torch.LongTensor)
-        for i in range(len(batch_labels)):
-            y[i] = batch_labels[i]
-        return Variable(y)
+    def get_tensorized_input_embeddings_matrix(self, sentence, word_vectors, vec_dim):
+        terms = sentence.strip().split()[:60]
+        word_embeddings = torch.zeros(len(terms), vec_dim).type(torch.DoubleTensor)
+        num_terms = len(terms)
+        for i in range(num_terms):
+            word = terms[i]
+            emb = torch.from_numpy(word_vectors[word]) \
+                if word in word_vectors else torch.from_numpy(self.unk_term)
+            word_embeddings[i] = emb
 
-    def get_tensorized_input_embeddings_matrix(self, batch_sents, word_vectors, vec_dim):
-        batch_tensors = []
-        for i in range(len(batch_sents)):
-            sentence = batch_sents[i]            
-            terms = sentence.strip().split()[:60]
-            word_embeddings = torch.zeros(len(terms), vec_dim).type(torch.DoubleTensor)
-            for i in range(len(terms)):
-                word = terms[i]
-                emb = torch.from_numpy(word_vectors[word]) \
-                    if word in word_vectors else torch.from_numpy(self.unk_term)
-                word_embeddings[i] = emb
+        if num_terms == 0:
+            word_embeddings = torch.zeros(1, vec_dim).type(torch.DoubleTensor)
+            word_embeddings[0] = torch.from_numpy(self.unk_term)
 
-            if len(terms) == 0:
-                word_embeddings = torch.zeros(1, vec_dim).type(torch.DoubleTensor)
-                word_embeddings[0] = torch.from_numpy(self.unk_term)
-
-
-            input_tensor = torch.zeros(1, vec_dim, len(terms))            
-            input_tensor[0] = torch.transpose(word_embeddings, 0, 1)
-            batch_tensors.append(Variable(input_tensor))
-        return batch_tensors
+        input_tensor = torch.zeros(1, vec_dim, num_terms)
+        input_tensor[0] = torch.transpose(word_embeddings, 0, 1)        
+        return Variable(input_tensor)
 
