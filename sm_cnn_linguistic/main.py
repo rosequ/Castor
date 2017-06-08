@@ -136,7 +136,7 @@ if __name__ == "__main__":
     vocab_size, vec_dim = utils.load_embedding_dimensions(cache_file)
 
     # instantiate model
-    net = QAModel(vec_dim, args.filter_width, args.num_conv_filters, args.no_ext_feats, cuda=args.cuda)
+    net = QAModel(vec_dim, args.filter_width, args.num_conv_filters, cuda=args.cuda)
 
     # initialize the trainer
     trainer = Trainer(net, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda)
