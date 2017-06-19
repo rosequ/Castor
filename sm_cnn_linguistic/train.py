@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 
-from dependency_parse import get_dependency_reordered
+# from dependency_parse import get_dependency_reordered
 import utils
 
 # logging setup
@@ -49,10 +49,11 @@ class Trainer(object):
             train_set_folder, dev_set_folder, test_set_folder):
         for set_folder in [test_set_folder, dev_set_folder, train_set_folder]:
             if set_folder:
-                questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
+                questions, sentences, labels, maxlen_q, maxlen_s, vocab, qdeps, adeps = \
                     utils.read_in_dataset(dataset_root_folder, set_folder)
 
-                self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
+
+                self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps]
 
                 default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
                 self.data_splits[set_folder].append(default_ext_feats)
@@ -92,7 +93,7 @@ class Trainer(object):
     def test(self, set_folder, batch_size):
         logger.info('----- Predictions on {} '.format(set_folder))
 
-        questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
+        questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
             self.data_splits[set_folder]
         word_vectors, vec_dim = self.embeddings, self.vec_dim
 
@@ -111,8 +112,8 @@ class Trainer(object):
             x_q = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
             x_a = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
             ys = Variable(torch.LongTensor([labels[k]]))
-            x_qdeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(questions[k]), word_vectors, vec_dim)
-            x_adeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(sentences[k]), word_vectors, vec_dim)
+            x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
+            x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
 
             pred = self.model(x_q, x_a, x_qdeps, x_adeps)
@@ -131,7 +132,7 @@ class Trainer(object):
     def train(self, set_folder, batch_size, debug_single_batch):
         train_start_time = time.time()
 
-        questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
+        questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
             self.data_splits[set_folder]
         word_vectors, vec_dim = self.embeddings, self.vec_dim
 
@@ -144,10 +145,8 @@ class Trainer(object):
             x_q = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
             x_a = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
             ys = Variable(torch.LongTensor([labels[k]]))
-            # x_qdeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(questions[k]), word_vectors, vec_dim)
-            # x_adeps = self.get_tensorized_input_embeddings_matrix(get_dependency_reordered(sentences[k]), word_vectors, vec_dim)
-            x_qdeps = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
-            x_adeps = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
+            x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
+            x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
             batch_loss, batch_correct = self._train(x_q, x_a, x_qdeps, x_adeps, ys)
 
