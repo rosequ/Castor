@@ -157,7 +157,11 @@ def read_in_dataset(dataset_folder, set_folder, stop_punct=False, dash_split=Fal
             vocab_set.add(term)
     vocab = list(vocab_set)
 
-    return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab]
+    qdeps = read_in_data(dataset_folder, set_folder, "a.toks.deps", False, stop_punct, dash_split)
+    adeps = read_in_data(dataset_folder, set_folder, "b.toks.deps", False, stop_punct, dash_split)
+
+
+    return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab, qdeps, adeps]
 
 
 def get_test_qids_labels(dataset_folder, set_folder):
