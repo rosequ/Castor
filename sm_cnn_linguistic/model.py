@@ -27,7 +27,7 @@ class QAModel(nn.Module):
 
 
     def __init__(self, input_n_dim, filter_width, num_conv_filters=100, \
-        ext_feats_size=4, n_classes=2, cuda=False):
+                 ext_feats_size=4, n_classes=2, cuda=False):
         super(QAModel, self).__init__()
 
         self.conv_channels = num_conv_filters
@@ -55,7 +55,7 @@ class QAModel(nn.Module):
 
         # TODO: how to combine the outputs of the multiple perspectives
         # 1. single combined feature vector        
-        num_combined_features = 4*self.conv_channels
+        num_combined_features = 4*self.conv_channels + 4
         self.feature2output = nn.Sequential(
             nn.Linear(num_combined_features, num_combined_features),
             nn.Tanh(),
@@ -73,7 +73,7 @@ class QAModel(nn.Module):
             self.dropout, self.hidden, self.logsoftmax = self.dropout.cuda(), \
                 self.hidden.cuda(), self.logsoftmax.cuda()
 
-    def forward(self, question, answer, q_deps, a_deps):
+    def forward(self, question, answer, ext_feat, q_deps, a_deps):
         # push regular question forward
         q_reg = self.conv_q.forward(question)
         q_reg = F.max_pool1d(q_reg, q_reg.size()[2])
@@ -91,9 +91,10 @@ class QAModel(nn.Module):
         a_dep = F.max_pool1d(a_dep, a_dep.size()[2])
         a_dep = a_dep.view(-1, self.conv_channels)
 
+
         # TODO: combining outputs: there can be various options for this
         # make combined feature vector
-        x = torch.cat([q_reg, q_dep, a_reg, a_dep], 1)
+        x = torch.cat([q_reg, q_dep, a_reg, a_dep, ext_feat], 1)
         x = self.feature2output.forward(x)
         return x
 

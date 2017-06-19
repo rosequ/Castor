@@ -12,7 +12,7 @@ dependency_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_mo
 r = re.compile(r'\d{3,100}[ -]+\d{3,100}[ -]+\d{3,100}')
 
 def dependency_parse(sentence):
-    try
+    try:
         result = dependency_parser.raw_parse(sentence)
         dep = result.__next__()
         return list(dep.triples())
