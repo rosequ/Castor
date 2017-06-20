@@ -131,8 +131,9 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
     """
     all_questions, all_answers = [], []
     for split in trainer.data_splits.keys():
-        questions, answers, labels, max_q_len, max_a_len, default_ext_feats = \
-            trainer.data_splits[split]
+        questions, answers, labels, max_q_len, max_a_len, \
+        qdeps, adeps, default_ext_feats = trainer.data_splits[split]
+
         all_questions.extend(questions)
         all_answers.extend(answers)
 
@@ -150,8 +151,8 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
     # 4. idf_over(stopped(q), stopped(a))
 
     for split in trainer.data_splits.keys():
-        questions, answers, labels, max_q_len, max_a_len, default_ext_feats = \
-            trainer.data_splits[split]
+        questions, answers, labels, max_q_len, max_a_len, qdeps,\
+        adeps, default_ext_feats = trainer.data_splits[split]
 
         overlap = compute_overlap(questions, answers)
         idf_weighted_overlap = compute_idf_weighted_overlap(questions, answers, idf_weights)

@@ -135,7 +135,7 @@ class Trainer(object):
             self.data_splits[set_folder]
         word_vectors, vec_dim = self.embeddings, self.vec_dim
 
-        # set model for training modep
+        # set model for training
         self.model.train()
 
         train_loss, train_correct = 0., 0.
@@ -147,7 +147,11 @@ class Trainer(object):
             x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
             x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
-            batch_loss, batch_correct = self._train(x_q, x_a, ext_feats, x_qdeps, x_adeps, ys)
+            ext_feats = torch.FloatTensor(ext_feats)
+            ext_feats = Variable(ext_feats)
+            x_ext_feats = torch.unsqueeze(ext_feats, 0)
+
+            batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, x_qdeps, x_adeps, ys)
 
             train_loss += batch_loss
             train_correct += batch_correct

@@ -94,7 +94,7 @@ class QAModel(nn.Module):
 
         # TODO: combining outputs: there can be various options for this
         # make combined feature vector
-        x = torch.cat([q_reg, q_dep, a_reg, a_dep, ext_feat], 1)
+        x = torch.cat([q_reg, q_dep, ext_feat, a_reg, a_dep], 1)
         x = self.feature2output.forward(x)
         return x
 
