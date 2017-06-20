@@ -114,8 +114,12 @@ class Trainer(object):
             x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
             x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
+            x_ext_feats = torch.FloatTensor(ext_feats[k])
+            x_ext_feats = Variable(x_ext_feats)
+            x_ext_feats = torch.unsqueeze(x_ext_feats, 0)
 
-            pred = self.model(x_q, x_a, x_qdeps, x_adeps)
+
+            pred = self.model(x_q, x_a, x_ext_feats, x_qdeps, x_adeps)
             loss = self.criterion(pred, ys)
             pred = torch.exp(pred)
             total_loss += loss
@@ -147,9 +151,9 @@ class Trainer(object):
             x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
             x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
-            ext_feats = torch.FloatTensor(ext_feats)
-            ext_feats = Variable(ext_feats)
-            x_ext_feats = torch.unsqueeze(ext_feats, 0)
+            x_ext_feats = torch.FloatTensor(ext_feats[k])
+            x_ext_feats = Variable(x_ext_feats)
+            x_ext_feats = torch.unsqueeze(x_ext_feats, 0)
 
             batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, x_qdeps, x_adeps, ys)
 
