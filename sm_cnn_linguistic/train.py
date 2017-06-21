@@ -88,9 +88,15 @@ class Trainer(object):
         return loss + 0.5 * self.reg * fp.norm() * fp.norm()
 
 
-    def _train(self, x_q, x_a, ext_feats, x_qdeps, x_adeps, ys):
+    def _train(self, x_q, x_a, ext_feats, ys, x_qdeps=[], x_adeps=[]):
         self.optimizer.zero_grad()
-        output = self.model(x_q, x_a, ext_feats, x_qdeps, x_adeps)
+
+        output = []
+        if no_dep_parsing:
+            output = self.model(x_q, x_a, ext_feats)
+        else:
+            output = self.model(x_q, x_a, ext_feats, x_qdeps, x_adeps)
+
         loss = self.criterion(output, ys)
         if not self.no_loss_reg:
             loss.add_(self.loss_regularization(loss))
@@ -98,16 +104,6 @@ class Trainer(object):
         self.optimizer.step()
         return loss.data[0], self.pred_equals_y(output, ys)
 
-
-    def _train(self, x_q, x_a, ext_feats, ys):
-        self.optimizer.zero_grad()
-        output = self.model(x_q, x_a, ext_feats)
-        loss = self.criterion(output, ys)
-        if not self.no_loss_reg:
-            loss.add_(self.loss_regularization(loss))
-        loss.backward()
-        self.optimizer.step()
-        return loss.data[0], self.pred_equals_y(output, ys)
 
     def pred_equals_y(self, pred, y):
         _, best = pred.max(1)
@@ -197,7 +193,7 @@ class Trainer(object):
             if not args.no_dep_parsing:
                 x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
                 x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
-                batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, x_qdeps, x_adeps, ys)
+                batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys, x_qdeps, x_adeps)
             else:
                 batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys)
 
