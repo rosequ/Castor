@@ -98,4 +98,20 @@ class QAModel(nn.Module):
         x = self.feature2output.forward(x)
         return x
 
+    def forward(self, question, answer, ext_feat):
+        # push regular question forward
+        q_reg = self.conv_q.forward(question)
+        q_reg = F.max_pool1d(q_reg, q_reg.size()[2])
+        q_reg = q_reg.view(-1, self.conv_channels)
 
+        # push regular answer forward
+        a_reg = self.conv_a.forward(answer)
+        a_reg = F.max_pool1d(a_reg, a_reg.size()[2])
+        a_reg = a_reg.view(-1, self.conv_channels)
+
+
+        # TODO: combining outputs: there can be various options for this
+        # make combined feature vector
+        x = torch.cat([q_reg, ext_feat, a_reg], 1)
+        x = self.feature2output.forward(x)
+        return x

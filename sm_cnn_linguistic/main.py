@@ -112,8 +112,11 @@ if __name__ == "__main__":
     ap.add_argument("--index-for-corpusIDF", help="fetches idf from Index. provide index path. will\
     generate a vocabFile")
 
-    args = ap.parse_args()
+    #ablation and feature engineering
+    ap.add_argument("--no-dep-parsing", help="no dependency parsing features", action="store_true")
 
+
+    args = ap.parse_args()
     torch.manual_seed(1234)
     np.random.seed(1234)
     torch.set_num_threads(args.num_threads)
@@ -132,7 +135,7 @@ if __name__ == "__main__":
     trainer = Trainer(net, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda)
     logger.info("Loading input data...")
     # load input data
-    trainer.load_input_data(args.dataset_folder, cache_file, train_set, dev_set, test_set)
+    trainer.load_input_data(args, cache_file, train_set, dev_set, test_set)
     logger.info("Setting up external features...")
     # setup external features
     # TODO: remember to update args.* in testing loop below
@@ -150,10 +153,10 @@ if __name__ == "__main__":
 
         for i in range(args.epochs):
             logger.info('------------- Training epoch {} --------------'.format(i+1))
-            train_accuracy = trainer.train(train_set, args.batch_size, args.debug_single_batch)
+            train_accuracy = trainer.train(train_set, args.batch_size, args.debug_single_batch, args)
             if args.debug_single_batch: sys.exit(0)
 
-            dev_scores = trainer.test(dev_set, args.batch_size)
+            dev_scores = trainer.test(dev_set, args.batch_size, args.no_dep_parsing)
 
             dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)
             logger.info("------- MAP {}, MRR {}".format(dev_map, dev_mrr))
@@ -177,7 +180,7 @@ if __name__ == "__main__":
     evaluator = Trainer(trained_model, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda)
 
     for split in [test_set, dev_set]:
-        evaluator.load_input_data(args.dataset_folder, cache_file, None, None, split)
+        evaluator.load_input_data(args, cache_file, None, None, split)
         if args.paper_ext_feats:
             evaluator.data_splits[split][-1] = ext_feats_for_splits[split]
             #set_external_features_as_per_paper(evaluator)

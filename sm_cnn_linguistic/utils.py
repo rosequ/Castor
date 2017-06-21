@@ -128,7 +128,7 @@ def read_in_data(datapath, set_name, file, stop_and_stem=False, stop_punct=False
             data = [stop_stem(sentence) for sentence in data]
     return data
 
-def read_in_dataset(dataset_folder, set_folder, stop_punct=False, dash_split=False):
+def read_in_dataset(dataset_folder, set_folder, no_dep_parsing, stop_punct=False, dash_split=False):
     """
     read in the data to return (question, sentence, label)
     set_folder = {train|dev|test}
@@ -157,11 +157,13 @@ def read_in_dataset(dataset_folder, set_folder, stop_punct=False, dash_split=Fal
             vocab_set.add(term)
     vocab = list(vocab_set)
 
-    qdeps = read_in_data(dataset_folder, set_folder, "a.toks.deps", False, stop_punct, dash_split)
-    adeps = read_in_data(dataset_folder, set_folder, "b.toks.deps", False, stop_punct, dash_split)
+    if not no_dep_parsing:
+        qdeps = read_in_data(dataset_folder, set_folder, "a.toks.deps", False, stop_punct, dash_split)
+        adeps = read_in_data(dataset_folder, set_folder, "b.toks.deps", False, stop_punct, dash_split)
 
-
-    return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab, qdeps, adeps]
+        return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab, qdeps, adeps]
+    else:
+        return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab]
 
 
 def get_test_qids_labels(dataset_folder, set_folder):

@@ -44,21 +44,35 @@ class Trainer(object):
         self.embeddings = {}
         self.vec_dim = vec_dim
 
-    def load_input_data(self, dataset_root_folder, word_vectors_cache_file, \
+    def load_input_data(self, args, word_vectors_cache_file, \
             train_set_folder, dev_set_folder, test_set_folder):
+        dataset_root_folder = args.dataset_folder
+
         for set_folder in [test_set_folder, dev_set_folder, train_set_folder]:
             if set_folder:
-                questions, sentences, labels, maxlen_q, maxlen_s, vocab, qdeps, adeps = \
-                    utils.read_in_dataset(dataset_root_folder, set_folder)
+                if args.no_dep_parsing:
+                    questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
+                        utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
+
+                    self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
+
+                    default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
+                    self.data_splits[set_folder].append(default_ext_feats)
+
+                    utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
+                                                 [] if "train" in set_folder else self.unk_term)
+                else:
+                    questions, sentences, labels, maxlen_q, maxlen_s, vocab, qdeps, adeps = \
+                        utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
 
 
-                self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps]
+                    self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps]
 
-                default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
-                self.data_splits[set_folder].append(default_ext_feats)
+                    default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
+                    self.data_splits[set_folder].append(default_ext_feats)
 
-                utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
-                                             [] if "train" in set_folder else self.unk_term)
+                    utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
+                                                 [] if "train" in set_folder else self.unk_term)
 
 
     def loss_regularization(self, loss):
@@ -84,16 +98,36 @@ class Trainer(object):
         self.optimizer.step()
         return loss.data[0], self.pred_equals_y(output, ys)
 
+
+    def _train(self, x_q, x_a, ext_feats, ys):
+        self.optimizer.zero_grad()
+        output = self.model(x_q, x_a, ext_feats)
+        loss = self.criterion(output, ys)
+        if not self.no_loss_reg:
+            loss.add_(self.loss_regularization(loss))
+        loss.backward()
+        self.optimizer.step()
+        return loss.data[0], self.pred_equals_y(output, ys)
+
     def pred_equals_y(self, pred, y):
         _, best = pred.max(1)
         best = best.data.long().squeeze()
         return torch.sum(y.data.long() == best)
 
-    def test(self, set_folder, batch_size):
+    def test(self, set_folder, batch_size, no_dep_parsing):
         logger.info('----- Predictions on {} '.format(set_folder))
 
         questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
-            self.data_splits[set_folder]
+            [], [], [], [], [], [], [], []
+
+        if not no_dep_parsing:
+            questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
+                self.data_splits[set_folder]
+        else:
+            questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
+                self.data_splits[set_folder]
+
+
         word_vectors, vec_dim = self.embeddings, self.vec_dim
 
         self.model.eval()
@@ -111,15 +145,20 @@ class Trainer(object):
             x_q = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
             x_a = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
             ys = Variable(torch.LongTensor([labels[k]]))
-            x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
-            x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
             x_ext_feats = torch.FloatTensor(ext_feats[k])
             x_ext_feats = Variable(x_ext_feats)
             x_ext_feats = torch.unsqueeze(x_ext_feats, 0)
 
+            pred = 0.
 
-            pred = self.model(x_q, x_a, x_ext_feats, x_qdeps, x_adeps)
+            if not no_dep_parsing:
+                x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
+                x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
+                pred = self.model(x_q, x_a, x_ext_feats, x_qdeps, x_adeps)
+            else:
+                pred = self.model(x_q, x_a, x_ext_feats)
+
             loss = self.criterion(pred, ys)
             pred = torch.exp(pred)
             total_loss += loss
@@ -132,7 +171,7 @@ class Trainer(object):
         return y_pred
 
 
-    def train(self, set_folder, batch_size, debug_single_batch):
+    def train(self, set_folder, batch_size, debug_single_batch, args):
         train_start_time = time.time()
 
         questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
@@ -148,14 +187,19 @@ class Trainer(object):
             x_q = self.get_tensorized_input_embeddings_matrix(questions[k], word_vectors, vec_dim)
             x_a = self.get_tensorized_input_embeddings_matrix(sentences[k], word_vectors, vec_dim)
             ys = Variable(torch.LongTensor([labels[k]]))
-            x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
-            x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
 
             x_ext_feats = torch.FloatTensor(ext_feats[k])
             x_ext_feats = Variable(x_ext_feats)
             x_ext_feats = torch.unsqueeze(x_ext_feats, 0)
 
-            batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, x_qdeps, x_adeps, ys)
+            batch_loss, batch_correct = 0., 0.
+
+            if not args.no_dep_parsing:
+                x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
+                x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
+                batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, x_qdeps, x_adeps, ys)
+            else:
+                batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys)
 
             train_loss += batch_loss
             train_correct += batch_correct
