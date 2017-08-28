@@ -1,34 +1,21 @@
-Setup:
-1. Create 3 directories under "simple_qa_rnn" - "resources", "datasets", "saved_checkpoints" 
-2. Download the SimpleQA dataset from [here](https://github.com/castorini/data) and put it under the "datasets" directory
-3. Download these files from this [Dropbox link](https://www.dropbox.com/sh/e5g12v7zu7sgzf7/AACW272AqPZJIUC7-A40LAsNa?dl=0) and paste them in the "resources" directory
-4. The directory structure should look like this now:
+## Relation Prediction Model
+
+- Download and extract SimpleQuestions dataset by running the script:
 ```
-simple_qa_rnn
-  ├── datasets
-  │   └── SimpleQuestions_v2
-  │       ├── ...
-  ├── model.py
-  ├── README.md
-  ├── resources
-  │   ├── rel_to_ix_SQ.pkl
-  │   ├── w2v_map_SQ.pkl
-  │   └── word_to_ix_SQ.pkl
-  ├── saved_checkpoints
-  │   └── [...models will be saved here later...]
-  ├── scripts
-  │   ├── ...
-  ├── train.py
-  └── util.py
-```
-5. Please take a look at the arguments in utils.py and set them accordingly to train the model.
-6. Run this command to train the model. Make sure you have PyTorch and other Python dependencies installed.
-```
-python train.py 
+bash fetch_dataset.sh 
 ```
 
-NOTE: There are pre-trained models saved in the 'finished_checkpoints' directory. They can be loaded up using PyTorch.
-You can run a pre-trained model on the test dataset:
+- You will also require the package - [torchtext](https://github.com/pytorch/text).
 ```
-python train.py --not_bidirectional --resume_snapshot finished_checkpoints/lstm1/[model_filename] --test 
+git clone https://github.com/pytorch/text.git
+cd path/to/torchtext
+python setup.py install
+```
+
+- Run the training script with the following commands. Please check out args.py file to see the different commands available:
+```
+cd relation_prediction
+python train.py
+python train.py --no_cuda
+python train.py --rnn_type gru
 ```
