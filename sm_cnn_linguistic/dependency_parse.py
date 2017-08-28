@@ -1,3 +1,5 @@
+import pickle
+
 from nltk.parse.stanford import StanfordDependencyParser
 
 import string
@@ -34,35 +36,49 @@ def get_dependency_reordered(sentence):
         sentence = sentence.replace(res, replaced)
 
     deps = dependency_parse(sentence)
-    reordered_tokens = []
-    for item in deps:
-        reordered_tokens.append(item[0][0])
-        reordered_tokens.append(item[2][0])
-    return ' '.join(reordered_tokens)
+    return  deps
+    # reordered_tokens = []
+    # for item in deps:
+    #     reordered_tokens.append(item[0][0])
+    #     reordered_tokens.append(item[2][0])
+    # return deps, ' '.join(reordered_tokens)
 
 
-def write_out_deps(filename, data):
-    with open(filename, "w") as outf:
+def write_out_pickle(filename, data):
+    with open("{}.all.pickle".format(filename), "w") as outf:
         oldq = None
         oldqdep = None
         for q in data:
             if oldq != q:
                 oldqdep = get_dependency_reordered(q)
                 oldq = q
-            print(oldqdep if len(oldqdep) else "a_placeholder_term", file=outf)
+            pickle.dump(oldqdep if len(oldqdep) else "a_placeholder_term", file=outf)
+
+
+# def write_out_deps(filename, data):
+#     with open(filename, "w") as outf:
+#         oldq = None
+#         oldqdep = None
+#         for q in data:
+#             if oldq != q:
+#                 oldqdep = get_dependency_reordered(q)
+#                 oldq = q
+#             print(oldqdep if len(oldqdep) else "a_placeholder_term", file=outf)
 
 
 if __name__ == "__main__":
 
-    get_dependency_reordered(" ".join(input().split()[:60]))
-    ap = argparse.ArgumentParser(description='dependecy parseing and reordering of sentence tokens')
-    ap.add_argument("input_file")
+    # ap = argparse.ArgumentParser(description='dependecy parseing and reordering of sentence tokens')
+    # ap.add_argument("input_file")
+    # #
+    # ap.add_argument("offset", type=int)
+    # ap.add_argument("batch_size", type=int)
+    # args = ap.parse_args()
     #
-    ap.add_argument("offset", type=int)
-    ap.add_argument("batch_size", type=int)
-    args = ap.parse_args()
-    #
-    questions = [line.strip() for line in open(args.input_file).readlines()][args.offset:args.offset+args.batch_size]
-    write_out_deps(args.input_file + ".deps.{:06d}".format(args.offset), questions)
-   
+    questions = ["I killed an elephant in my pajamas"]
+    # questions = [line.strip() for line in open(args.input_file).readlines()][args.offset:args.offset+args.batch_size]
+    # write_out_pickle(args.input_file + ".deps.{:06d}".format(args.offset), questions)
+    write_out_pickle( "a.deps.{:06d}".format(10), questions)
+    x = pickle.load(open("a.deps.000010.all.pickle", "rb"))
+    print(x)
 

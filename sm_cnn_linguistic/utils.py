@@ -157,13 +157,13 @@ def read_in_dataset(dataset_folder, set_folder, no_dep_parsing, stop_punct=False
             vocab_set.add(term)
     vocab = list(vocab_set)
 
-    if not no_dep_parsing:
-        qdeps = read_in_data(dataset_folder, set_folder, "a.toks.deps", False, stop_punct, dash_split)
-        adeps = read_in_data(dataset_folder, set_folder, "b.toks.deps", False, stop_punct, dash_split)
-
-        return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab, qdeps, adeps]
-    else:
-        return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab]
+    # if not no_dep_parsing:
+    #     qdeps = read_in_data(dataset_folder, set_folder, "a.toks.deps", False, stop_punct, dash_split)
+    #     adeps = read_in_data(dataset_folder, set_folder, "b.toks.deps", False, stop_punct, dash_split)
+    #
+    #     return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab, qdeps, adeps]
+    # else:
+    return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab]
 
 
 def get_test_qids_labels(dataset_folder, set_folder):

@@ -156,7 +156,8 @@ if __name__ == "__main__":
             train_accuracy = trainer.train(train_set, args.batch_size, args.debug_single_batch, args)
             if args.debug_single_batch: sys.exit(0)
 
-            dev_scores = trainer.test(dev_set, args.batch_size, args.no_dep_parsing)
+            # dev_scores = trainer.test(dev_set, args.batch_size, args.no_dep_parsing)
+            dev_scores = trainer.test(dev_set, args.batch_size)
 
             dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)
             logger.info("------- MAP {}, MRR {}".format(dev_map, dev_mrr))

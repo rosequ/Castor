@@ -55,7 +55,7 @@ class QAModel(nn.Module):
 
         # TODO: how to combine the outputs of the multiple perspectives
         # 1. single combined feature vector        
-        num_combined_features = 4*self.conv_channels + 4
+        num_combined_features = 2*self.conv_channels + 4
         self.feature2output = nn.Sequential(
             nn.Linear(num_combined_features, num_combined_features),
             nn.Tanh(),
@@ -73,30 +73,30 @@ class QAModel(nn.Module):
             self.dropout, self.hidden, self.logsoftmax = self.dropout.cuda(), \
                 self.hidden.cuda(), self.logsoftmax.cuda()
 
-    def forward(self, question, answer, ext_feat, q_deps, a_deps):
-        # push regular question forward
-        q_reg = self.conv_q.forward(question)
-        q_reg = F.max_pool1d(q_reg, q_reg.size()[2])
-        q_reg = q_reg.view(-1, self.conv_channels)
-        # push dependancy parsed question forward
-        q_dep = self.conv_q.forward(question)
-        q_dep = F.max_pool1d(q_dep, q_dep.size()[2])
-        q_dep = q_dep.view(-1, self.conv_channels)
-        # push regular answer forward
-        a_reg = self.conv_a.forward(answer)
-        a_reg = F.max_pool1d(a_reg, a_reg.size()[2])
-        a_reg = a_reg.view(-1, self.conv_channels)
-        # push dependancy parsed answer forward
-        a_dep = self.conv_a.forward(answer)
-        a_dep = F.max_pool1d(a_dep, a_dep.size()[2])
-        a_dep = a_dep.view(-1, self.conv_channels)
-
-
-        # TODO: combining outputs: there can be various options for this
-        # make combined feature vector
-        x = torch.cat([q_reg, q_dep, ext_feat, a_reg, a_dep], 1)
-        x = self.feature2output.forward(x)
-        return x
+    # def forward(self, question, answer, ext_feat, q_deps, a_deps):
+    #     # push regular question forward
+    #     q_reg = self.conv_q.forward(question)
+    #     q_reg = F.max_pool1d(q_reg, q_reg.size()[2])
+    #     q_reg = q_reg.view(-1, self.conv_channels)
+    #     # push dependancy parsed question forward
+    #     q_dep = self.conv_q.forward(question)
+    #     q_dep = F.max_pool1d(q_dep, q_dep.size()[2])
+    #     q_dep = q_dep.view(-1, self.conv_channels)
+    #     # push regular answer forward
+    #     a_reg = self.conv_a.forward(answer)
+    #     a_reg = F.max_pool1d(a_reg, a_reg.size()[2])
+    #     a_reg = a_reg.view(-1, self.conv_channels)
+    #     # push dependancy parsed answer forward
+    #     a_dep = self.conv_a.forward(answer)
+    #     a_dep = F.max_pool1d(a_dep, a_dep.size()[2])
+    #     a_dep = a_dep.view(-1, self.conv_channels)
+    #
+    #
+    #     # TODO: combining outputs: there can be various options for this
+    #     # make combined feature vector
+    #     x = torch.cat([q_reg, q_dep, ext_feat, a_reg, a_dep], 1)
+    #     x = self.feature2output.forward(x)
+    #     return x
 
     def forward(self, question, answer, ext_feat):
         # push regular question forward
@@ -112,6 +112,6 @@ class QAModel(nn.Module):
 
         # TODO: combining outputs: there can be various options for this
         # make combined feature vector
-        x = torch.cat([q_reg, ext_feat, a_reg], 1)
+        x = torch.cat([q_reg,  ext_feat, a_reg], 1)
         x = self.feature2output.forward(x)
         return x

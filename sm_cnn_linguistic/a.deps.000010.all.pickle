@@ -1,0 +1,1 @@
+[(('killed', 'VBD'), 'nsubj', ('I', 'PRP')), (('killed', 'VBD'), 'dobj', ('elephant', 'NN')), (('elephant', 'NN'), 'det', ('an', 'DT')), (('killed', 'VBD'), 'nmod', ('pajamas', 'NNS')), (('pajamas', 'NNS'), 'case', ('in', 'IN')), (('pajamas', 'NNS'), 'nmod:poss', ('my', 'PRP$'))]

@@ -50,29 +50,31 @@ class Trainer(object):
 
         for set_folder in [test_set_folder, dev_set_folder, train_set_folder]:
             if set_folder:
-                if args.no_dep_parsing:
-                    questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
-                        utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
+                # if args.no_dep_parsing:
+                #     questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
+                #         utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
+                #
+                #     self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
+                #
+                #     default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
+                #     self.data_splits[set_folder].append(default_ext_feats)
+                #
+                #     utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
+                #                                  [] if "train" in set_folder else self.unk_term)
+                # else:
+                # questions, sentences, labels, maxlen_q, maxlen_s, vocab, qdeps, adeps = \
+                #     utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
 
-                    self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
+                questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
+                    utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
 
-                    default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
-                    self.data_splits[set_folder].append(default_ext_feats)
+                # self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps]
+                self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
+                default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
+                self.data_splits[set_folder].append(default_ext_feats)
 
-                    utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
-                                                 [] if "train" in set_folder else self.unk_term)
-                else:
-                    questions, sentences, labels, maxlen_q, maxlen_s, vocab, qdeps, adeps = \
-                        utils.read_in_dataset(dataset_root_folder, set_folder, args.no_dep_parsing)
-
-
-                    self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps]
-
-                    default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
-                    self.data_splits[set_folder].append(default_ext_feats)
-
-                    utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
-                                                 [] if "train" in set_folder else self.unk_term)
+                utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
+                                             [] if "train" in set_folder else self.unk_term)
 
 
     def loss_regularization(self, loss):
@@ -92,10 +94,11 @@ class Trainer(object):
         self.optimizer.zero_grad()
 
         output = []
-        if no_dep_parsing:
-            output = self.model(x_q, x_a, ext_feats)
-        else:
-            output = self.model(x_q, x_a, ext_feats, x_qdeps, x_adeps)
+        # if x_qdeps and x_adeps:
+        #     pass
+        # #     output = self.model(x_q, x_a, ext_feats, x_qdeps, x_adeps)
+        # else:
+        output = self.model(x_q, x_a, ext_feats)
 
         loss = self.criterion(output, ys)
         if not self.no_loss_reg:
@@ -110,18 +113,18 @@ class Trainer(object):
         best = best.data.long().squeeze()
         return torch.sum(y.data.long() == best)
 
-    def test(self, set_folder, batch_size, no_dep_parsing):
+    def test(self, set_folder, batch_size):
         logger.info('----- Predictions on {} '.format(set_folder))
 
         questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
             [], [], [], [], [], [], [], []
 
-        if not no_dep_parsing:
-            questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
-                self.data_splits[set_folder]
-        else:
-            questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
-                self.data_splits[set_folder]
+        # if not no_dep_parsing:
+        # questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
+        #         self.data_splits[set_folder]
+        # else:
+        questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
+            self.data_splits[set_folder]
 
 
         word_vectors, vec_dim = self.embeddings, self.vec_dim
@@ -148,12 +151,13 @@ class Trainer(object):
 
             pred = 0.
 
-            if not no_dep_parsing:
-                x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
-                x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
-                pred = self.model(x_q, x_a, x_ext_feats, x_qdeps, x_adeps)
-            else:
-                pred = self.model(x_q, x_a, x_ext_feats)
+            # if not no_dep_parsing:
+            #     pass
+            #     # x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
+            #     # x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
+            #     # pred = self.model(x_q, x_a, x_ext_feats, x_qdeps, x_adeps)
+            # else:
+            pred = self.model(x_q, x_a, x_ext_feats)
 
             loss = self.criterion(pred, ys)
             pred = torch.exp(pred)
@@ -170,8 +174,10 @@ class Trainer(object):
     def train(self, set_folder, batch_size, debug_single_batch, args):
         train_start_time = time.time()
 
-        questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
-            self.data_splits[set_folder]
+        # questions, sentences, labels, maxlen_q, maxlen_s, qdeps, adeps, ext_feats = \
+        #     self.data_splits[set_folder]
+        questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
+                self.data_splits[set_folder]
         word_vectors, vec_dim = self.embeddings, self.vec_dim
 
         # set model for training
@@ -190,12 +196,13 @@ class Trainer(object):
 
             batch_loss, batch_correct = 0., 0.
 
-            if not args.no_dep_parsing:
-                x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
-                x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
-                batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys, x_qdeps, x_adeps)
-            else:
-                batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys)
+            # if not args.no_dep_parsing:
+            #     pass
+            #     # x_qdeps = self.get_tensorized_input_embeddings_matrix(qdeps[k], word_vectors, vec_dim)
+            #     # x_adeps = self.get_tensorized_input_embeddings_matrix(adeps[k], word_vectors, vec_dim)
+            #     # batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys, x_qdeps, x_adeps)
+            # else:
+            batch_loss, batch_correct = self._train(x_q, x_a, x_ext_feats, ys)
 
             train_loss += batch_loss
             train_correct += batch_correct
