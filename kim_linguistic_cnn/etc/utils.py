@@ -1,5 +1,5 @@
 import re
-
+import json
 
 def clean_str(string):
   """
@@ -28,3 +28,10 @@ def clean_str_sst(string):
   string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
   string = re.sub(r"\s{2,}", " ", string)
   return string.strip()
+
+
+def get_dep_pos(string):
+  dep_tag, pos_tag = [], []
+  json_string = json.loads(string)
+
+  return dep_tag, pos_tag

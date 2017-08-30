@@ -24,6 +24,8 @@ class Bucket(Configurable):
   def set_size(self, size):
     self._size = size
     self._data = []
+    self._deps = []
+    self._pos = []
     self._sents = []
     self._target = []
 

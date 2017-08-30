@@ -7,7 +7,8 @@ from example import Example
 from collections import Counter
 from etc.kmeans import KMeans
 import numpy as np
-from etc.utils import clean_str, clean_str_sst
+from etc.utils import clean_str, clean_str_sst, get_dep_pos
+
 
 class Dataset(Configurable):
   """
@@ -55,7 +56,6 @@ class Dataset(Configurable):
           line = clean_str_sst(line).split()
           if len(line) > 1:
             buff.append(line)
-        self._process_buff(buff)
     else:
       with open(filename) as f:
         buff = []
@@ -63,10 +63,17 @@ class Dataset(Configurable):
           line = clean_str(line).split()
           if line:
             buff.append(line)
-        self._process_buff(buff)
+
+      with open(filename + '.deps.json') as g:
+        for line_num, line in enumerate(f):
+          line = clean_str_sst(line).split()
+          if len(line) > 1:
+            head_words, head_tags, word_tags = get_dep_pos(line)
+        self._process_buff(buff, head_words, head_tags, word_tags)
+
     return
 
-  def _process_buff(self, buff):
+  def _process_buff(self, buff, head_words, head_tags, word_tags):
     """
     :param buff:
     :return:
@@ -92,7 +99,7 @@ class Dataset(Configurable):
       # Construct the sent into example first
       # And then push them into buckets
       bkt_idx = self.len2bkts[len(sent)]
-      example = Example(sent, self._config)
+      example = Example(sent, head_words, head_tags, word_tags, self._config)
       example.convert(self.vocabs)
       # save to bucket
       idx = self.buckets[bkt_idx].add(example)
@@ -128,14 +135,14 @@ class Dataset(Configurable):
           data = self.buckets[bkt_idx].data[bkt_mb]
           sents = self.buckets[bkt_idx].sents[bkt_mb]
           target = self.buckets[bkt_idx].target[bkt_mb]
+          head = self.buckets[bkt_idx].head_channel[bkt_mb]
           maxlen = np.max(np.sum(np.greater(data[:,:,0], 0), axis=1))
           # Do not use dynamic index like conll_index
           # For word, set 0 data = [(fea1, fea2, fea3), (fea1, fea2, fea3), ...]
           # For target, target = [(target1,), (target2,), ...]
           feed_dict = {
-            'text' : data[:,:maxlen, input_idx],
-            'dep' : ,
-            'pos' : ,
+            'text' : data[:, :maxlen, input_idx],
+            'head' : head[:, :maxlen, input_idx],
             'label' : target[:, target_idx],
             'batch_size' : len(target)
           }
