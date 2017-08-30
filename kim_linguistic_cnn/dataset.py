@@ -134,6 +134,8 @@ class Dataset(Configurable):
           # For target, target = [(target1,), (target2,), ...]
           feed_dict = {
             'text' : data[:,:maxlen, input_idx],
+            'dep' : ,
+            'pos' : ,
             'label' : target[:, target_idx],
             'batch_size' : len(target)
           }

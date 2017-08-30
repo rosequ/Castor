@@ -5,3 +5,5 @@ __pycache__
 .idea/
 *idfsim
 *.swp
+stanford-corenlp-full-2016-10-31
+data

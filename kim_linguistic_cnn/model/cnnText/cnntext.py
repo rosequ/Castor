@@ -38,7 +38,7 @@ class CNNText(nn.Module):
 
     self.conv1 = nn.Conv2d(input_channel, output_channel, (3, words_dim), padding=(2, 0))
     self.conv2 = nn.Conv2d(input_channel, output_channel, (4, words_dim), padding=(3, 0))
-    self.conv3 = nn.Conv2d(input_channel, output_channel, (5, words_dim), padding=(4, 0))
+    self.conv3 = nn.Conv2d(input_channel, output_channel, (7, words_dim), padding=(6, 0))
     #self.convs1 = [nn.Conv2d(input_channel, output_channel, (K, words_dim), padding=(K-1, 0)) for K in Ks]
 
     self.dropout = nn.Dropout(args['dropout'])
@@ -70,6 +70,12 @@ class CNNText(nn.Module):
       static_words = x[:, :, 1]
       static_input = self.static_embed(static_words)
       x = torch.stack([word_input, static_input], dim=1)# (batch, channel_input, sent_len, embed_dim)
+    elif self.mode == 'linguistic_static':
+      words = x[:, :, 1]
+      word_channel = self.static_embed(words)  # (batch, sent_len, embed_dim)
+      head_words = x[:, :, 1]
+      headword_channel = self.static_embed(head_words)
+      x = torch.stack([headword_channel, word_channel], dim=1)  # (batch, channel_input, sent_len, embed_dim)
     else:
       print("Unsupported Mode")
       exit()
