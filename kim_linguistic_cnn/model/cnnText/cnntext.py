@@ -50,9 +50,6 @@ class CNNText(nn.Module):
     return x
 
   def forward(self, head, x):
-    static_words = x[:, :, 1]
-    static_input = self.static_embed(static_words)
-    print(static_input)
     #if self.use_gpu:
     #  self.conv1s = [model.cuda() for model in self.convs1]
     if self.mode == 'rand':
@@ -78,7 +75,7 @@ class CNNText(nn.Module):
       word_channel = self.static_embed(words)  # (batch, sent_len, embed_dim)
       head_words = head[:, :, 1]
       headword_channel = self.static_embed(head_words)
-      x = torch.stack([headword_channel, word_channel], dim=1)  # (batch, channel_input, sent_len, embed_dim)
+      x = torch.stack([word_channel, headword_channel], dim=1) # (batch, channel_input, sent_len, embed_dim)
     else:
       print("Unsupported Mode")
       exit()

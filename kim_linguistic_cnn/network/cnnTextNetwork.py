@@ -121,7 +121,7 @@ class cnnTextNetwork(Configurable):
           feature = Variable(torch.from_numpy(feature).cuda())
           target = Variable(torch.from_numpy(target).cuda())[:, 0]
         else:
-          head = Variable(torch.from_numpy(head).cuda())
+          head = Variable(torch.from_numpy(head))
           feature = Variable(torch.from_numpy(feature))
           target = Variable(torch.from_numpy(target))[:, 0]
 
@@ -182,7 +182,7 @@ class cnnTextNetwork(Configurable):
         head = Variable(torch.from_numpy(head).cuda())
         feature = Variable(torch.from_numpy(feature).cuda())
       else:
-        head = Variable(torch.from_numpy(head).cuda())
+        head = Variable(torch.from_numpy(head))
         feature = Variable(torch.from_numpy(feature))
       target = Variable(torch.from_numpy(target))[:,0]
       # if torch.cuda.is_available():

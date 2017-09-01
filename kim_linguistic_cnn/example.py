@@ -71,15 +71,19 @@ class Example(Configurable):
   def convert(self, vocabs):
     words, target = vocabs
     self.data["words"] = []
+    self.data["tags"] = []
     self.head_channel["words"] = []
+    self.head_channel["tags"] = []
     self.data["targets"] = target[self.sent["targets"]]
 
     for word in self.sent["words"]:
       self.data["words"].append(words[word])
-    # for word, dep_pos in zip(self.sent["words"], self.unfold_tags(self.sent["tags"])):
-    #   self.data["words"].append(words[word])
-    #   # self.data["words"].extend(dep_pos)
+
+    for dep_pos in self.unfold_tags(self.sent["tags"]):
+      self.data["tags"].append(dep_pos)
 
     for word in self.head["words"]:
       self.head_channel["words"].append(words[word])
-    #   self.head_channel["words"].extend(dep_pos)
+
+    for dep_pos in self.unfold_tags(self.head["tags"]):
+      self.head_channel["tags"].append(dep_pos)
