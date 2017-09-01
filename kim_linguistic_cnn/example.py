@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-
+import numpy as np
 from configurable import Configurable
 class Example(Configurable):
   """
@@ -41,17 +41,43 @@ class Example(Configurable):
       self.sent = {}
       self.sent["words"] = sent[1:]
       self.sent["targets"] = sent[0]
-      self.sent["ags"] = word_tags
+      self.sent["tags"] = word_tags
+
+  def one_hot(self, dep_tag, pos_tag):
+    # configure these to be set automatically
+    basic_dependency_size = 40
+    pos_size = 43
+    dep_narray = np.array(dep_tag)
+    pos_narray = np.array(pos_tag)
+
+    dep_one_hot = np.zeros((dep_narray.size, basic_dependency_size + 1))
+    pos_one_hot = np.zeros((pos_narray.size, pos_size + 1))
+
+    dep_one_hot[np.arange(len(dep_tag)), dep_narray] = 1
+    pos_one_hot[np.arange(len(pos_tag)), pos_narray] = 1
+
+    concatenated_one_hot = []
+    for x, y in zip(dep_one_hot, pos_one_hot):
+      concatenated_one_hot.append(x.tolist() + y.tolist())
+
+    return concatenated_one_hot
+
+  def unfold_tags(self, tags):
+    mid = len(tags) // 2
+    dep_tag = tags[:mid]
+    pos_tag = tags[mid:]
+    return(self.one_hot(dep_tag, pos_tag))
 
   def convert(self, vocabs):
     words, target = vocabs
     self.data["words"] = []
+    self.head_channel["words"] = []
     self.data["targets"] = target[self.sent["targets"]]
-    for word in self.sent["words"]:
+
+    for word, dep_pos in zip(self.sent["words"], self.unfold_tags(self.sent["tags"])):
       self.data["words"].append(words[word])
+      # self.data["words"].extend(dep_pos)
 
-    self.data["words"].extend(self.sent["tags"])
-
-    for word in self.head["words"]:
+    for word, dep_pos in zip(self.head["words"], self.unfold_tags(self.head["tags"])):
       self.head_channel["words"].append(words[word])
-    self.head_channel["words"].extend(self.head["tags"])
+      self.head_channel["words"].extend(dep_pos)

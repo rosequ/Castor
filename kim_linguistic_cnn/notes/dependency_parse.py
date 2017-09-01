@@ -25,4 +25,4 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     parse(args.input)
-    read_json(args.input + '.deps.json')
+    # read_json(args.input + '.deps.json')

@@ -18,15 +18,15 @@ class Bucket(Configurable):
     super(Bucket, self).__init__(*args, **kwargs)
     self._size = None
     self._data = None
+    self._head = None
     self._sents = None
     self._target = None
 
   def set_size(self, size):
     self._size = size
     self._data = []
-    self._deps = []
-    self._pos = []
     self._sents = []
+    self._head = []
     self._target = []
 
   def add(self, example):
@@ -36,13 +36,16 @@ class Bucket(Configurable):
       raise ValueError("Bucket of size %d received sequence of len %d" % (self._size, example.length))
     self._data.append(example.data['words'])
     self._sents.append(example.sent['words'])
+    self._head.append(example.head_channel['words'])
     self._target.append(example.data['targets'])
     return len(self._data)-1
 
   def finalize(self):
     if self._data is None:
       raise ValueError("You need to set size before finalize it")
+
     if len(self._data) > 0:
+      # self._data, _else = self._data[0], self._data[1:]
       shape = (len(self._data), self._size, len(self._data[-1][-1]))
       data = np.zeros(shape, dtype=np.int64)
       for i, datum in enumerate(self._data):
@@ -54,6 +57,8 @@ class Bucket(Configurable):
           print(datum)
           exit()
       self._data = data
+
+      # self._head = head
       self._sents = np.array(self._sents)
       self._target = np.array(self._target)
 

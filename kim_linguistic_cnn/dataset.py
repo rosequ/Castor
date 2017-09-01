@@ -49,28 +49,26 @@ class Dataset(Configurable):
     :param filename:
     :return:
     """
+    buff = []
     if self.dataset_type == 'SST-1' or self.dataset_type == 'SST-2':
       with open(filename) as f:
-        buff = []
         for line_num, line in enumerate(f):
           line = clean_str_sst(line).split()
           if len(line) > 1:
             buff.append(line)
     else:
       with open(filename) as f:
-        buff = []
         for line_num, line in enumerate(f):
           line = clean_str(line).split()
           if line:
             buff.append(line)
 
-      with open(filename + '.deps.json') as g:
-        for line_num, line in enumerate(f):
-          line = clean_str_sst(line).split()
-          if len(line) > 1:
-            head_words, head_tags, word_tags = get_dep_pos(line)
-        self._process_buff(buff, head_words, head_tags, word_tags)
-
+    with open(filename + '.deps.json') as g:
+      for line_num, line in enumerate(g):
+        head_words, head_tags, word_tags = None, None, None
+        if len(line) > 1:
+          head_words, head_tags, word_tags = get_dep_pos(line)
+      self._process_buff(buff, head_words, head_tags, word_tags)
     return
 
   def _process_buff(self, buff, head_words, head_tags, word_tags):
@@ -78,6 +76,7 @@ class Dataset(Configurable):
     :param buff:
     :return:
     """
+    print("in _process_buff")
     len_cntr = Counter()
     for sent in buff:
       len_cntr[len(sent)] += 1
@@ -135,14 +134,15 @@ class Dataset(Configurable):
           data = self.buckets[bkt_idx].data[bkt_mb]
           sents = self.buckets[bkt_idx].sents[bkt_mb]
           target = self.buckets[bkt_idx].target[bkt_mb]
-          head = self.buckets[bkt_idx].head_channel[bkt_mb]
+          # head = self.buckets[bkt_idx].head_channel[bkt_mb]
           maxlen = np.max(np.sum(np.greater(data[:,:,0], 0), axis=1))
           # Do not use dynamic index like conll_index
           # For word, set 0 data = [(fea1, fea2, fea3), (fea1, fea2, fea3), ...]
           # For target, target = [(target1,), (target2,), ...]
+
           feed_dict = {
             'text' : data[:, :maxlen, input_idx],
-            'head' : head[:, :maxlen, input_idx],
+            # 'head' : head[:, :maxlen, input_idx],
             'label' : target[:, target_idx],
             'batch_size' : len(target)
           }
