@@ -31,7 +31,7 @@ class Example(Configurable):
       self.sent = {}
       self.sent["words"] = sent[2:]
       self.sent["targets"] = sent[0]
-      self.sent["tags"] = word_tags
+      self.data["tags"] = word_tags
     else:
       self.data = {}
       self.head_channel = {}
@@ -74,10 +74,12 @@ class Example(Configurable):
     self.head_channel["words"] = []
     self.data["targets"] = target[self.sent["targets"]]
 
-    for word, dep_pos in zip(self.sent["words"], self.unfold_tags(self.sent["tags"])):
+    for word in self.sent["words"]:
       self.data["words"].append(words[word])
-      # self.data["words"].extend(dep_pos)
+    # for word, dep_pos in zip(self.sent["words"], self.unfold_tags(self.sent["tags"])):
+    #   self.data["words"].append(words[word])
+    #   # self.data["words"].extend(dep_pos)
 
-    for word, dep_pos in zip(self.head["words"], self.unfold_tags(self.head["tags"])):
+    for word in self.head["words"]:
       self.head_channel["words"].append(words[word])
-      self.head_channel["words"].extend(dep_pos)
+    #   self.head_channel["words"].extend(dep_pos)

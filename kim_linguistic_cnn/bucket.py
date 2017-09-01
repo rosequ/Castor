@@ -45,7 +45,6 @@ class Bucket(Configurable):
       raise ValueError("You need to set size before finalize it")
 
     if len(self._data) > 0:
-      # self._data, _else = self._data[0], self._data[1:]
       shape = (len(self._data), self._size, len(self._data[-1][-1]))
       data = np.zeros(shape, dtype=np.int64)
       for i, datum in enumerate(self._data):
@@ -57,6 +56,20 @@ class Bucket(Configurable):
           print(datum)
           exit()
       self._data = data
+
+      if len(self._head) > 0:
+        shape = (len(self._head), self._size, len(self._head[-1][-1]))
+        head = np.zeros(shape, dtype=np.int64)
+        for i, datum in enumerate(self._head):
+          try:
+            datum = np.array(datum)
+            head[i, 0:len(datum)] = datum
+          except:
+            print("Head: sentence %d has Error with data :" % (i + 1))
+            print(self._head[i + 1])
+            print(datum)
+            exit()
+      self._head = head
 
       # self._head = head
       self._sents = np.array(self._sents)
@@ -78,6 +91,9 @@ class Bucket(Configurable):
   @property
   def data(self):
     return self._data
+  @property
+  def head(self):
+    return self._head
   @property
   def sents(self):
     return self._sents

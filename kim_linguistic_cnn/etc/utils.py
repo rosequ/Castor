@@ -1,6 +1,8 @@
 import re
 import json
 
+from nltk.tokenize import TreebankWordTokenizer
+
 dep_tags = ['csubj', 'aux', 'acl:relcl', 'mark', 'expl', 'amod', 'acl', 'parataxis', 'compound',
             'advmod', 'nmod:poss', 'cc:preconj', 'det', 'case', 'ROOT', 'punct', 'nmod:npmod',
             'nsubjpass', 'det:predet', 'advcl', 'root', 'dep', 'mwe', 'xcomp', 'nmod', 'cop',
@@ -41,6 +43,8 @@ def clean_str_sst(string):
   string = re.sub(r"\s{2,}", " ", string)
   return string.strip()
 
+  # return TreebankWordTokenizer().tokenize(string)
+
 
 def get_dep_pos(string):
   this_pos = []
@@ -73,5 +77,4 @@ def get_dep_pos(string):
 
   tags = this_dep + this_pos
   headtags = this_head_dep + this_head_pos
-
   return headwords, headtags, tags

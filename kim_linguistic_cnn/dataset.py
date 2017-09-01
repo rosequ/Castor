@@ -53,7 +53,7 @@ class Dataset(Configurable):
     if self.dataset_type == 'SST-1' or self.dataset_type == 'SST-2':
       with open(filename) as f:
         for line_num, line in enumerate(f):
-          line = clean_str_sst(line).split()
+          line = clean_str_sst(line)
           if len(line) > 1:
             buff.append(line)
     else:
@@ -63,12 +63,15 @@ class Dataset(Configurable):
           if line:
             buff.append(line)
 
+    head_words_buff, head_tags_buff, word_tags_buff = [], [], []
     with open(filename + '.deps.json') as g:
       for line_num, line in enumerate(g):
-        head_words, head_tags, word_tags = None, None, None
-        if len(line) > 1:
-          head_words, head_tags, word_tags = get_dep_pos(line)
-      self._process_buff(buff, head_words, head_tags, word_tags)
+        head_words, head_tags, word_tags = get_dep_pos(line)
+        if len(head_words) > 0:
+          head_words_buff.append(head_words)
+          head_tags_buff.append(head_tags)
+          word_tags_buff.append(word_tags)
+      self._process_buff(buff, head_words_buff, head_tags_buff, word_tags_buff)
     return
 
   def _process_buff(self, buff, head_words, head_tags, word_tags):
@@ -93,12 +96,12 @@ class Dataset(Configurable):
       prev_size = size
       # map all length from min to max to bkts id
       # some of lengths do not appear in the data set
-    for sent in buff:
+    for line_num, sent in enumerate(buff):
       # Add the sent to the specific bucket according to their length
       # Construct the sent into example first
       # And then push them into buckets
       bkt_idx = self.len2bkts[len(sent)]
-      example = Example(sent, head_words, head_tags, word_tags, self._config)
+      example = Example(sent, head_words[line_num], head_tags[line_num], word_tags[line_num], self._config)
       example.convert(self.vocabs)
       # save to bucket
       idx = self.buckets[bkt_idx].add(example)
@@ -134,7 +137,7 @@ class Dataset(Configurable):
           data = self.buckets[bkt_idx].data[bkt_mb]
           sents = self.buckets[bkt_idx].sents[bkt_mb]
           target = self.buckets[bkt_idx].target[bkt_mb]
-          # head = self.buckets[bkt_idx].head_channel[bkt_mb]
+          head = self.buckets[bkt_idx].head[bkt_mb]
           maxlen = np.max(np.sum(np.greater(data[:,:,0], 0), axis=1))
           # Do not use dynamic index like conll_index
           # For word, set 0 data = [(fea1, fea2, fea3), (fea1, fea2, fea3), ...]
@@ -142,7 +145,7 @@ class Dataset(Configurable):
 
           feed_dict = {
             'text' : data[:, :maxlen, input_idx],
-            # 'head' : head[:, :maxlen, input_idx],
+            'head' : head[:, :maxlen, input_idx],
             'label' : target[:, target_idx],
             'batch_size' : len(target)
           }

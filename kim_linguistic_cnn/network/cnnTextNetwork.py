@@ -106,8 +106,8 @@ class cnnTextNetwork(Configurable):
     while True:
       for batch in self.train_minibatch():
         self.model.train()
-        # head, feature, target = batch['head'], batch['text'], batch['label']
-        feature, target = batch['text'], batch['label']
+        head, feature, target = batch['head'], batch['text'], batch['label']
+        # feature, target = batch['text'], batch['label']
         # Sanity check
         # for sent in feature:
         #   for word in sent:
@@ -117,18 +117,18 @@ class cnnTextNetwork(Configurable):
         #       print(word_str, embed_str)
         ##
         if self.use_gpu:
-          # head = Variable(torch.from_numpy(head).cuda())
+          head = Variable(torch.from_numpy(head).cuda())
           feature = Variable(torch.from_numpy(feature).cuda())
           target = Variable(torch.from_numpy(target).cuda())[:, 0]
         else:
-          # head = Variable(torch.from_numpy(head).cuda())
+          head = Variable(torch.from_numpy(head).cuda())
           feature = Variable(torch.from_numpy(feature))
           target = Variable(torch.from_numpy(target))[:, 0]
 
         # if torch.cuda.is_available():
         #   feature, target = feature.cuda(), target.cuda()
         optimizer.zero_grad() # Clears the gradients of all optimized Variable
-        logit = self.model(feature)
+        logit = self.model(head, feature)
         loss = F.cross_entropy(logit, target)
         loss.backward()
         optimizer.step()
@@ -177,15 +177,17 @@ class cnnTextNetwork(Configurable):
     test_sents = 0
     for batch in minibatch():
       # TODO: Prediton to Text
-      feature, target = batch['text'], batch['label']
+      head, feature, target = batch['head'], batch['text'], batch['label']
       if self.use_gpu:
+        head = Variable(torch.from_numpy(head).cuda())
         feature = Variable(torch.from_numpy(feature).cuda())
       else:
+        head = Variable(torch.from_numpy(head).cuda())
         feature = Variable(torch.from_numpy(feature))
       target = Variable(torch.from_numpy(target))[:,0]
       # if torch.cuda.is_available():
       #   feature, target = feature.cuda(), target.cuda()
-      logit = self.model(feature)
+      logit = self.model(head, feature)
       preds = torch.max(logit, 1)[1].view(target.size())  # get the index
       test_corrects += (preds.cpu().data == target.data).sum()
       test_sents += batch['batch_size']

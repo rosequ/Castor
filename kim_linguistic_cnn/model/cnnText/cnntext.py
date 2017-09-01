@@ -49,7 +49,7 @@ class CNNText(nn.Module):
     x = F.max_pool1d(x, x.size(2)).squeeze(2)
     return x
 
-  def forward(self, x):
+  def forward(self, head, x):
     static_words = x[:, :, 1]
     static_input = self.static_embed(static_words)
     print(static_input)
@@ -76,9 +76,9 @@ class CNNText(nn.Module):
     elif self.mode == 'linguistic_static':
       words = x[:, :, 1]
       word_channel = self.static_embed(words)  # (batch, sent_len, embed_dim)
-      # head_words = head[:, :, 1]
-      # headword_channel = self.static_embed(head_words)
-      # x = torch.stack([headword_channel, word_channel], dim=1)  # (batch, channel_input, sent_len, embed_dim)
+      head_words = head[:, :, 1]
+      headword_channel = self.static_embed(head_words)
+      x = torch.stack([headword_channel, word_channel], dim=1)  # (batch, channel_input, sent_len, embed_dim)
     else:
       print("Unsupported Mode")
       exit()
