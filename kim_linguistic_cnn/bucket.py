@@ -19,12 +19,16 @@ class Bucket(Configurable):
     self._size = None
     self._data = None
     self._head = None
+    self._wordtags = None
+    self._headtags = None
     self._sents = None
     self._target = None
 
   def set_size(self, size):
     self._size = size
     self._data = []
+    self._wordtags = []
+    self._headtags = []
     self._sents = []
     self._head = []
     self._target = []
@@ -35,8 +39,10 @@ class Bucket(Configurable):
       #  TODO: we may support size = -1 in the future
       raise ValueError("Bucket of size %d received sequence of len %d" % (self._size, example.length))
     self._data.append(example.data['words'])
-    self._sents.append(example.sent['words'])
     self._head.append(example.head_channel['words'])
+    self._wordtags.append(example.data['tags'])
+    self._headtags.append(example.head_channel['tags'])
+    self._sents.append(example.sent['words'])
     self._target.append(example.data['targets'])
     return len(self._data)-1
 
@@ -71,7 +77,8 @@ class Bucket(Configurable):
             exit()
       self._head = head
 
-      # self._head = head
+      self._wordtags = np.array(self._wordtags)
+      self._headtags = np.array(self._headtags)
       self._sents = np.array(self._sents)
       self._target = np.array(self._target)
 
@@ -94,6 +101,12 @@ class Bucket(Configurable):
   @property
   def head(self):
     return self._head
+  @property
+  def word_tag(self):
+    return self._wordtags
+  @property
+  def head_tag(self):
+    return self._headtags
   @property
   def sents(self):
     return self._sents

@@ -24,7 +24,7 @@ class CNNText(nn.Module):
     embeds_dim = args['embeds_dim']
     Ks = args['kernel_sizes']
     self.mode = args['mode']
-    if self.mode == 'multichannel':
+    if self.mode == 'multichannel' or self.mode == 'linguistic_static':
       input_channel = 2
     else:
       input_channel = 1
