@@ -140,6 +140,7 @@ class cnnTextNetwork(Configurable):
           wordtag = Variable(torch.FloatTensor(wordtag))
           target = Variable(torch.from_numpy(target))[:, 0]
 
+        print(feature.get_shape(), wordtag.get_shape())
         # if torch.cuda.is_available():
         #   feature, target = feature.cuda(), target.cuda()
         optimizer.zero_grad() # Clears the gradients of all optimized Variable

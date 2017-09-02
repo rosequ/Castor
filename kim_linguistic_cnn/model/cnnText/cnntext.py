@@ -94,7 +94,7 @@ class CNNText(nn.Module):
       word_channel_dynamic = torch.cat([word_channel_dynamic, wordtag], 1)
 
       word_channel_static = self.static_embed(words)  # (batch, sent_len, embed_dim)
-      word_channel_static = torch.cat([wordtag, wordtag], 1)
+      word_channel_static = torch.cat([word_channel_static, wordtag], 1)
 
       head_words = head[:, :, 1]
       headword_channel_dynamic = self.non_static_embed(head_words)
