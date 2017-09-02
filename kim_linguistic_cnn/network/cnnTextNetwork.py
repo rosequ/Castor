@@ -73,6 +73,16 @@ class cnnTextNetwork(Configurable):
     self.model = model
     return
 
+  # def pad(tensor, length):
+  #   return torch.cat([tensor, tensor.new(length - tensor.size(0), *tensor.size()[1:]).zero_()])
+  #
+  # lengths = [10, 8, 4, 2, 2, 2, 1]
+  # max_length = lengths[0]
+  # batch_sizes = [sum(map(bool, filter(lambda x: x >= i, lengths))) for i in range(1, max_length + 1)]
+  # offset = 0
+  # padded = torch.cat([pad(i * 100 + torch.range(1, 5 * l).view(l, 1, 5), max_length)
+  #                     for i, l in enumerate(lengths, 1)], 1)
+  # padded = Variable(padded)
 
   def train_minibatch(self):
     return self._trainset.minibatch(self.train_batch_size, self.input_idx, self.target_idx, shuffle=True)
@@ -119,15 +129,15 @@ class cnnTextNetwork(Configurable):
         ##
         if self.use_gpu:
           head = Variable(torch.from_numpy(head).cuda())
-          headtag = Variable(torch.from_numpy(headtag).cuda())
+          headtag = Variable(torch.FloatTensor(headtag).cuda())
           feature = Variable(torch.from_numpy(feature).cuda())
-          wordtag = Variable(torch.from_numpy(wordtag).cuda())
+          wordtag = Variable(torch.FloatTensor(wordtag).cuda())
           target = Variable(torch.from_numpy(target).cuda())[:, 0]
         else:
           head = Variable(torch.from_numpy(head))
-          headtag = Variable(torch.from_numpy(headtag))
+          headtag = Variable(torch.FloatTensor(headtag))
           feature = Variable(torch.from_numpy(feature))
-          wordtag = Variable(torch.from_numpy(wordtag))
+          wordtag = Variable(torch.FloatTensor(wordtag))
           target = Variable(torch.from_numpy(target))[:, 0]
 
         # if torch.cuda.is_available():
@@ -186,15 +196,15 @@ class cnnTextNetwork(Configurable):
                                                 batch['label']
       if self.use_gpu:
         head = Variable(torch.from_numpy(head).cuda())
-        headtag = Variable(torch.from_numpy(headtag).cuda())
+        headtag = Variable(torch.FloatTensor(headtag).cuda())
         feature = Variable(torch.from_numpy(feature).cuda())
-        wordtag = Variable(torch.from_numpy(wordtag).cuda())
+        wordtag = Variable(torch.FloatTensor(wordtag).cuda())
         target = Variable(torch.from_numpy(target).cuda())[:, 0]
       else:
         head = Variable(torch.from_numpy(head))
-        headtag = Variable(torch.from_numpy(headtag))
+        headtag = Variable(torch.FloatTensor(headtag))
         feature = Variable(torch.from_numpy(feature))
-        wordtag = Variable(torch.from_numpy(wordtag))
+        wordtag = Variable(torch.FloatTensor(wordtag))
         target = Variable(torch.from_numpy(target))[:, 0]
       # if torch.cuda.is_available():
       #   feature, target = feature.cuda(), target.cuda()

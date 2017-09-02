@@ -46,6 +46,9 @@ class Bucket(Configurable):
     self._target.append(example.data['targets'])
     return len(self._data)-1
 
+  def pad(self, list, size, padding):
+    return list + [padding] * abs((len(list) - size))
+
   def finalize(self):
     if self._data is None:
       raise ValueError("You need to set size before finalize it")
@@ -77,8 +80,18 @@ class Bucket(Configurable):
             exit()
       self._head = head
 
-      self._wordtags = np.array(self._wordtags)
-      self._headtags = np.array(self._headtags)
+      len_max_wordtags = len(max(self._wordtags, key=len))
+      wordtags = []
+      for i, datum in enumerate(self._wordtags):
+        wordtags.append(self.pad(datum[-1], len_max_wordtags, 0))
+      self._wordtags = wordtags
+
+      len_max_headtags = len(max(self._wordtags, key=len))
+      headtags = []
+      for i, datum in enumerate(self._wordtags):
+        headtags.append(self.pad(datum, len_max_headtags, 0))
+      self._headtags = headtags
+
       self._sents = np.array(self._sents)
       self._target = np.array(self._target)
 
@@ -99,14 +112,14 @@ class Bucket(Configurable):
   def data(self):
     return self._data
   @property
-  def head(self):
-    return self._head
-  @property
-  def word_tag(self):
+  def wordtag(self):
     return self._wordtags
   @property
-  def head_tag(self):
+  def headtag(self):
     return self._headtags
+  @property
+  def head(self):
+    return self._head
   @property
   def sents(self):
     return self._sents

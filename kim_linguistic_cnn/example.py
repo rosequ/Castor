@@ -31,7 +31,6 @@ class Example(Configurable):
       self.sent = {}
       self.sent["words"] = sent[2:]
       self.sent["targets"] = sent[0]
-      self.data["tags"] = word_tags
     else:
       self.data = {}
       self.head_channel = {}
