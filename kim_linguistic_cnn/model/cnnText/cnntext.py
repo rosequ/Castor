@@ -24,7 +24,9 @@ class CNNText(nn.Module):
     embeds_dim = args['embeds_dim']
     Ks = args['kernel_sizes']
     self.mode = args['mode']
-    if self.mode == 'multichannel' or self.mode == 'linguistic_static':
+    if self.mode == 'linguistic_multichannel':
+      input_channel = 4
+    elif self.mode == 'multichannel' or self.mode == 'linguistic_static':
       input_channel = 2
     else:
       input_channel = 1
@@ -49,7 +51,7 @@ class CNNText(nn.Module):
     x = F.max_pool1d(x, x.size(2)).squeeze(2)
     return x
 
-  def forward(self, head, x):
+  def forward(self, head, headtag, x, wordtag):
     #if self.use_gpu:
     #  self.conv1s = [model.cuda() for model in self.convs1]
     if self.mode == 'rand':
@@ -73,9 +75,35 @@ class CNNText(nn.Module):
     elif self.mode == 'linguistic_static':
       words = x[:, :, 1]
       word_channel = self.static_embed(words)  # (batch, sent_len, embed_dim)
+      word_channel = torch.cat([word_channel, wordtag], 1)
       head_words = head[:, :, 1]
       headword_channel = self.static_embed(head_words)
+      headword_channel = torch.cat([headword_channel, headtag], 1)
       x = torch.stack([word_channel, headword_channel], dim=1) # (batch, channel_input, sent_len, embed_dim)
+    elif self.mode == 'linguistic_nonstatic':
+      words = x[:, :, 1]
+      word_channel = self.non_static_embed(words)  # (batch, sent_len, embed_dim)
+      word_channel = torch.cat([word_channel, wordtag], 1)
+      head_words = head[:, :, 1]
+      headword_channel = self.non_static_embed(head_words)
+      headword_channel = torch.cat([headword_channel, headtag], 1)
+      x = torch.stack([word_channel, headword_channel], dim=1) # (batch, channel_input, sent_len, embed_dim)
+    elif self.mode == 'linguistic_multichannel':
+      words = x[:, :, 1]
+      word_channel_dynamic = self.non_static_embed(words)  # (batch, sent_len, embed_dim)
+      word_channel_dynamic = torch.cat([word_channel_dynamic, wordtag], 1)
+
+      word_channel_static = self.static_embed(words)  # (batch, sent_len, embed_dim)
+      word_channel_static = torch.cat([wordtag, wordtag], 1)
+
+      head_words = head[:, :, 1]
+      headword_channel_dynamic = self.non_static_embed(head_words)
+      headword_channel_dynamic = torch.cat([headword_channel_dynamic, headtag], 1)
+
+      headword_channel_static = self.static_embed(head_words)
+      headword_channel_static = torch.cat([headword_channel_static, headtag], 1)
+      x = torch.stack([word_channel_dynamic, word_channel_static, headword_channel_dynamic,
+                       headword_channel_static], dim=1) # (batch, channel_input, sent_len, embed_dim)
     else:
       print("Unsupported Mode")
       exit()

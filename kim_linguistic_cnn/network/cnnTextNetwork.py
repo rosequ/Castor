@@ -106,7 +106,8 @@ class cnnTextNetwork(Configurable):
     while True:
       for batch in self.train_minibatch():
         self.model.train()
-        head, feature, target = batch['head'], batch['text'], batch['label']
+        head, headtag, feature, wordtag, target = batch['head'], batch['head_tag'], batch['text'], batch['word_tag'],\
+                                                  batch['label']
         # feature, target = batch['text'], batch['label']
         # Sanity check
         # for sent in feature:
@@ -118,17 +119,21 @@ class cnnTextNetwork(Configurable):
         ##
         if self.use_gpu:
           head = Variable(torch.from_numpy(head).cuda())
+          headtag = Variable(torch.from_numpy(headtag).cuda())
           feature = Variable(torch.from_numpy(feature).cuda())
+          wordtag = Variable(torch.from_numpy(wordtag).cuda())
           target = Variable(torch.from_numpy(target).cuda())[:, 0]
         else:
           head = Variable(torch.from_numpy(head))
+          headtag = Variable(torch.from_numpy(headtag))
           feature = Variable(torch.from_numpy(feature))
+          wordtag = Variable(torch.from_numpy(wordtag))
           target = Variable(torch.from_numpy(target))[:, 0]
 
         # if torch.cuda.is_available():
         #   feature, target = feature.cuda(), target.cuda()
         optimizer.zero_grad() # Clears the gradients of all optimized Variable
-        logit = self.model(head, feature)
+        logit = self.model(head, headtag, feature, wordtag)
         loss = F.cross_entropy(logit, target)
         loss.backward()
         optimizer.step()
@@ -177,17 +182,23 @@ class cnnTextNetwork(Configurable):
     test_sents = 0
     for batch in minibatch():
       # TODO: Prediton to Text
-      head, feature, target = batch['head'], batch['text'], batch['label']
+      head, headtag, feature, wordtag, target = batch['head'], batch['head_tag'], batch['text'], batch['word_tag'], \
+                                                batch['label']
       if self.use_gpu:
         head = Variable(torch.from_numpy(head).cuda())
+        headtag = Variable(torch.from_numpy(headtag).cuda())
         feature = Variable(torch.from_numpy(feature).cuda())
+        wordtag = Variable(torch.from_numpy(wordtag).cuda())
+        target = Variable(torch.from_numpy(target).cuda())[:, 0]
       else:
         head = Variable(torch.from_numpy(head))
+        headtag = Variable(torch.from_numpy(headtag))
         feature = Variable(torch.from_numpy(feature))
-      target = Variable(torch.from_numpy(target))[:,0]
+        wordtag = Variable(torch.from_numpy(wordtag))
+        target = Variable(torch.from_numpy(target))[:, 0]
       # if torch.cuda.is_available():
       #   feature, target = feature.cuda(), target.cuda()
-      logit = self.model(head, feature)
+      logit = self.model(head, headtag, feature, wordtag)
       preds = torch.max(logit, 1)[1].view(target.size())  # get the index
       test_corrects += (preds.cpu().data == target.data).sum()
       test_sents += batch['batch_size']
