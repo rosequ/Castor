@@ -62,7 +62,7 @@ class cnnTextNetwork(Configurable):
                  'words_num': len(self.words),
                  'words_dim': self.words_dim,
                  'target_class': len(self.targets),
-                 'output_channels':  400,
+                 'output_channels':  100,
                  'dropout': self.dropout,
                  'embeds_num' : self.words.embeds_size,
                  'embeds_dim' : self.words_dim, # Embedding size must be the same with words size
