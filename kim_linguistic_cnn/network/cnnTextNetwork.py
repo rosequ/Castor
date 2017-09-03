@@ -129,15 +129,15 @@ class cnnTextNetwork(Configurable):
         ##
         if self.use_gpu:
           head = Variable(torch.from_numpy(head).cuda())
-          headtag = Variable(torch.FloatTensor(headtag).cuda())
+          headtag = Variable(torch.from_numpy(headtag).cuda())
           feature = Variable(torch.from_numpy(feature).cuda())
-          wordtag = Variable(torch.FloatTensor(wordtag).cuda())
+          wordtag = Variable(torch.from_numpy(wordtag).cuda())
           target = Variable(torch.from_numpy(target).cuda())[:, 0]
         else:
           head = Variable(torch.from_numpy(head))
-          headtag = Variable(torch.FloatTensor(headtag))
+          headtag = Variable(torch.from_numpy(headtag))
           feature = Variable(torch.from_numpy(feature))
-          wordtag = Variable(torch.FloatTensor(wordtag))
+          wordtag = Variable(torch.from_numpy(wordtag))
           target = Variable(torch.from_numpy(target))[:, 0]
 
         # print(feature.get_shape(), wordtag.get_shape())
@@ -197,15 +197,15 @@ class cnnTextNetwork(Configurable):
                                                 batch['label']
       if self.use_gpu:
         head = Variable(torch.from_numpy(head).cuda())
-        headtag = Variable(torch.FloatTensor(headtag).cuda())
+        headtag = Variable(torch.from_numpy(headtag).cuda())
         feature = Variable(torch.from_numpy(feature).cuda())
-        wordtag = Variable(torch.FloatTensor(wordtag).cuda())
+        wordtag = Variable(torch.from_numpy(wordtag).cuda())
       else:
         head = Variable(torch.from_numpy(head))
-        headtag = Variable(torch.FloatTensor(headtag))
+        headtag = Variable(torch.from_numpy(headtag))
         feature = Variable(torch.from_numpy(feature))
-        wordtag = Variable(torch.FloatTensor(wordtag))
-          
+        wordtag = Variable(torch.from_numpy(wordtag))
+
       target = Variable(torch.from_numpy(target))[:, 0]
       # if torch.cuda.is_available():
       #   feature, target = feature.cuda(), target.cuda()

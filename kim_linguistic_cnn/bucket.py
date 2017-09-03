@@ -80,17 +80,33 @@ class Bucket(Configurable):
             exit()
       self._head = head
 
-      len_max_wordtags = len(max(self._wordtags, key=len))
-      wordtags = []
-      for i, datum in enumerate(self._wordtags):
-        wordtags.append(self.pad(datum[-1], len_max_wordtags, 0))
-      self._wordtags = wordtags
+      if len(self._wordtags) > 0:
+        shape = (len(self._wordtags), self._size, 85)
+        wordtag = np.zeros(shape, dtype=np.int64)
+        for i, datum in enumerate(self._wordtags):
+          try:
+            datum = np.array(datum)
+            wordtag[i, 0:len(datum)] = datum
+          except Exception as e:
+            print( e)
+            print(self._wordtags[i + 1])
+            print(datum)
+            exit()
+        self._wordtags = wordtag
 
-      len_max_headtags = len(max(self._wordtags, key=len))
-      headtags = []
-      for i, datum in enumerate(self._wordtags):
-        headtags.append(self.pad(datum, len_max_headtags, 0))
-      self._headtags = headtags
+      if len(self._headtags) > 0:
+        shape = (len(self._headtags), self._size, 85)
+        headtag = np.zeros(shape, dtype=np.int64)
+        for i, datum in enumerate(self._headtags):
+          try:
+            datum = np.array(datum)
+            headtag[i, 0:len(datum)] = datum
+          except Exception as e:
+            print( e)
+            print(self._headtags[i + 1])
+            print(datum)
+            exit()
+        self._headtags = headtag
 
       self._sents = np.array(self._sents)
       self._target = np.array(self._target)

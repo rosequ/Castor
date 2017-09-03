@@ -138,8 +138,8 @@ class Dataset(Configurable):
           sents = self.buckets[bkt_idx].sents[bkt_mb]
           target = self.buckets[bkt_idx].target[bkt_mb]
           head = self.buckets[bkt_idx].head[bkt_mb]
-          word_tag = self.buckets[bkt_idx].wordtag
-          head_tag = self.buckets[bkt_idx].headtag
+          word_tag = self.buckets[bkt_idx].wordtag[bkt_mb]
+          head_tag = self.buckets[bkt_idx].headtag[bkt_mb]
           maxlen = np.max(np.sum(np.greater(data[:,:,0], 0), axis=1))
           # Do not use dynamic index like conll_index
           # For word, set 0 data = [(fea1, fea2, fea3), (fea1, fea2, fea3), ...]
@@ -152,8 +152,8 @@ class Dataset(Configurable):
             'head' : head[:, :maxlen, input_idx],
             'label' : target[:, target_idx],
             'batch_size' : len(target),
-            'word_tag' : word_tag,
-            'head_tag' : head_tag
+            'word_tag' : word_tag[:, :maxlen, :],
+            'head_tag' : head_tag[:, :maxlen, :]
           }
           yield feed_dict
 
