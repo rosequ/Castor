@@ -140,7 +140,7 @@ class cnnTextNetwork(Configurable):
           wordtag = Variable(torch.FloatTensor(wordtag))
           target = Variable(torch.from_numpy(target))[:, 0]
 
-        print(feature.get_shape(), wordtag.get_shape())
+        # print(feature.get_shape(), wordtag.get_shape())
         # if torch.cuda.is_available():
         #   feature, target = feature.cuda(), target.cuda()
         optimizer.zero_grad() # Clears the gradients of all optimized Variable
@@ -200,13 +200,13 @@ class cnnTextNetwork(Configurable):
         headtag = Variable(torch.FloatTensor(headtag).cuda())
         feature = Variable(torch.from_numpy(feature).cuda())
         wordtag = Variable(torch.FloatTensor(wordtag).cuda())
-        target = Variable(torch.from_numpy(target).cuda())[:, 0]
       else:
         head = Variable(torch.from_numpy(head))
         headtag = Variable(torch.FloatTensor(headtag))
         feature = Variable(torch.from_numpy(feature))
         wordtag = Variable(torch.FloatTensor(wordtag))
-        target = Variable(torch.from_numpy(target))[:, 0]
+          
+      target = Variable(torch.from_numpy(target))[:, 0]
       # if torch.cuda.is_available():
       #   feature, target = feature.cuda(), target.cuda()
       logit = self.model(head, headtag, feature, wordtag)
