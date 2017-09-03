@@ -26,14 +26,11 @@ class CNNText(nn.Module):
     self.mode = args['mode']
     if self.mode == 'linguistic_multichannel':
       input_channel = 4
-    elif self.mode == 'multichannel' or self.mode == 'linguistic_static':
+    elif self.mode == 'multichannel' or self.mode == 'linguistic_static' or self.mode == 'linguistic_dynamic':
       input_channel = 2
     else:
       input_channel = 1
 
-    if 'linguistic' in self.mode:
-      words_dim += 85
-        
     self.use_gpu = args['use_gpu']
     self.embed = nn.Embedding(words_num, words_dim)
     self.static_embed = nn.Embedding(embeds_num, embeds_dim)
@@ -42,9 +39,9 @@ class CNNText(nn.Module):
     self.non_static_embed.weight.data.copy_(torch.from_numpy(args['embeds']))
     self.static_embed.weight.requires_grad = False
 
-    self.conv1 = nn.Conv2d(input_channel, output_channel, (3, words_dim), padding=(2, 0))
-    self.conv2 = nn.Conv2d(input_channel, output_channel, (4, words_dim), padding=(3, 0))
-    self.conv3 = nn.Conv2d(input_channel, output_channel, (7, words_dim), padding=(6, 0))
+    self.conv1 = nn.Conv2d(input_channel, output_channel, (3, words_dim + 85), padding=(2, 0))
+    self.conv2 = nn.Conv2d(input_channel, output_channel, (4, words_dim + 85), padding=(3, 0))
+    self.conv3 = nn.Conv2d(input_channel, output_channel, (7, words_dim + 85), padding=(6, 0))
     #self.convs1 = [nn.Conv2d(input_channel, output_channel, (K, words_dim), padding=(K-1, 0)) for K in Ks]
 
     self.dropout = nn.Dropout(args['dropout'])
