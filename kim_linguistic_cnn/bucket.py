@@ -82,7 +82,7 @@ class Bucket(Configurable):
 
       if len(self._wordtags) > 0:
         shape = (len(self._wordtags), self._size, 85)
-        wordtag = np.zeros(shape, dtype=np.int64)
+        wordtag = np.zeros(shape, dtype=np.float32)
         for i, datum in enumerate(self._wordtags):
           try:
             datum = np.array(datum)
@@ -96,7 +96,7 @@ class Bucket(Configurable):
 
       if len(self._headtags) > 0:
         shape = (len(self._headtags), self._size, 85)
-        headtag = np.zeros(shape, dtype=np.int64)
+        headtag = np.zeros(shape, dtype=np.float32)
         for i, datum in enumerate(self._headtags):
           try:
             datum = np.array(datum)
