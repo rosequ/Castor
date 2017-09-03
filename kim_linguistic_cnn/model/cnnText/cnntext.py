@@ -30,6 +30,10 @@ class CNNText(nn.Module):
       input_channel = 2
     else:
       input_channel = 1
+
+    if 'linguistic' in self.mode:
+      words_dim += 85
+        
     self.use_gpu = args['use_gpu']
     self.embed = nn.Embedding(words_num, words_dim)
     self.static_embed = nn.Embedding(embeds_num, embeds_dim)
