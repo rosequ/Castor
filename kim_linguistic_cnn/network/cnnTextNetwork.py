@@ -165,20 +165,18 @@ class cnnTextNetwork(Configurable):
           if accuracy > best_score:
             best_score = accuracy
             valid_accuracy = accuracy
+            best_model = epoch
             print("## Update Model ##")
             torch.save(self.model, self.save_model_file)
 
-          if accuracy - best_accuracy > 0.01:
-            best_accuracy = accuracy
-            best_model = epoch
-
           print("## Currently the best validation: Accucacy %5.2f" % (valid_accuracy))
+
+      epoch += 1
 
       if (epoch - best_model) >= 5:
         print('No improvement since the last {} epochs. Stopping training'.format(epoch - best_model))
         break
           
-      epoch += 1
       accuracy = float(acc_corrects) / float(acc_sents) * 100
       print("[EPOCH] %d Accuracy: %5.2f" % (epoch, accuracy))
       acc_corrects = 0
