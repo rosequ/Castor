@@ -113,20 +113,12 @@ class cnnTextNetwork(Configurable):
     acc_sents = 0 # count sents number for one log_interval
 
     epoch = 0
+    best_model = 0
     while True:
       for batch in self.train_minibatch():
         self.model.train()
         head, headtag, feature, wordtag, target = batch['head'], batch['head_tag'], batch['text'], batch['word_tag'],\
                                                   batch['label']
-        # feature, target = batch['text'], batch['label']
-        # Sanity check
-        # for sent in feature:
-        #   for word in sent:
-        #     word_str = self.words._idx2str[word[0]]
-        #     embed_str = self.words._embed2str[word[1]]
-        #     if word_str != embed_str:
-        #       print(word_str, embed_str)
-        ##
         if self.use_gpu:
           head = Variable(torch.from_numpy(head).cuda())
           headtag = Variable(torch.from_numpy(headtag).cuda())
@@ -140,9 +132,6 @@ class cnnTextNetwork(Configurable):
           wordtag = Variable(torch.from_numpy(wordtag))
           target = Variable(torch.from_numpy(target))[:, 0]
 
-        # print(feature.get_shape(), wordtag.get_shape())
-        # if torch.cuda.is_available():
-        #   feature, target = feature.cuda(), target.cuda()
         optimizer.zero_grad() # Clears the gradients of all optimized Variable
         logit = self.model(head, headtag, feature, wordtag)
         loss = F.cross_entropy(logit, target)
@@ -152,16 +141,10 @@ class cnnTextNetwork(Configurable):
         preds = torch.max(logit, 1)[1].view(target.size())  # get the index
         acc_corrects += (preds.cpu().data == target.cpu().data).sum()
         acc_sents += batch['batch_size']
-        # if step % self.log_interval == 0:
-        #   accuracy = float(acc_corrects) / float(acc_sents) * 100.0
-        #   print("## [Batch %d] Accuracy : %5.2f" % (step, accuracy))
-        #   acc_corrects = 0
-        #   acc_sents = 0
-        best_model = 0
 
         if step == 1 or step % self.valid_interval == 0:
           accuracy = self.test(validate=True)
-          print("## Validation: %5.2f" % (accuracy))
+          print("## Validation: %8.5f" % (accuracy))
           if accuracy > best_score:
             best_score = accuracy
             valid_accuracy = accuracy
@@ -169,16 +152,16 @@ class cnnTextNetwork(Configurable):
             print("## Update Model ##")
             torch.save(self.model, self.save_model_file)
 
-          print("## Currently the best validation: Accucacy %5.2f" % (valid_accuracy))
+          print("## Currently the best validation: Accucacy %8.5f" % (valid_accuracy))
 
       epoch += 1
+      accuracy = float(acc_corrects) / float(acc_sents) * 100
+      print("[EPOCH] %d Accuracy: %8.5f" % (epoch, accuracy))
 
-      if (epoch - best_model) >= 5:
+      if epoch - best_model >= 7:
         print('No improvement since the last {} epochs. Stopping training'.format(epoch - best_model))
         break
-          
-      accuracy = float(acc_corrects) / float(acc_sents) * 100
-      print("[EPOCH] %d Accuracy: %5.2f" % (epoch, accuracy))
+
       acc_corrects = 0
       acc_sents = 0
       if (epoch % self.epoch_decay == 0):
