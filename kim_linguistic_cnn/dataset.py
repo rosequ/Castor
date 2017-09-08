@@ -33,9 +33,6 @@ class Dataset(Configurable):
     for bucket in self.buckets:
       bucket.finalize()
 
-
-
-
   @property
   def n_bkts(self):
     if self._train:
@@ -53,7 +50,7 @@ class Dataset(Configurable):
     if self.dataset_type == 'SST-1' or self.dataset_type == 'SST-2':
       with open(filename) as f:
         for line_num, line in enumerate(f):
-          line = clean_str_sst(line)
+          line = clean_str_sst(line).split()
           if len(line) > 1:
             buff.append(line)
     else:
