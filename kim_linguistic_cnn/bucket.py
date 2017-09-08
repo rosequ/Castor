@@ -63,11 +63,11 @@ class Bucket(Configurable):
         except:
           print("sentence %d has Error with data :"%(i+1))
           print(datum)
-          exit()
       self._data = data
 
       if len(self._head) > 0:
         shape = (len(self._head), self._size, len(self._head[-1][-1]))
+        print(shape)
         head = np.zeros(shape, dtype=np.int64)
         for i, datum in enumerate(self._head):
           try:
@@ -81,28 +81,29 @@ class Bucket(Configurable):
       self._head = head
 
       if len(self._wordtags) > 0:
-        shape = (len(self._wordtags), self._size, 85)
+        shape = (len(self._wordtags), self._size)
         wordtag = np.zeros(shape, dtype=np.float32)
         for i, datum in enumerate(self._wordtags):
           try:
             datum = np.array(datum)
             wordtag[i, 0:len(datum)] = datum
           except Exception as e:
-            print( e)
+            print(e)
+            print("in word")
             print(self._wordtags[i + 1])
             print(datum)
             exit()
         self._wordtags = wordtag
 
       if len(self._headtags) > 0:
-        shape = (len(self._headtags), self._size, 85)
+        shape = (len(self._headtags), self._size)
         headtag = np.zeros(shape, dtype=np.float32)
         for i, datum in enumerate(self._headtags):
           try:
             datum = np.array(datum)
             headtag[i, 0:len(datum)] = datum
           except Exception as e:
-            print( e)
+            print(e)
             print(self._headtags[i + 1])
             print(datum)
             exit()
@@ -129,10 +130,10 @@ class Bucket(Configurable):
     return self._data
   @property
   def wordtag(self):
-    return self._wordtags
+    return np.asarray(self._wordtags)
   @property
   def headtag(self):
-    return self._headtags
+    return np.asarray(self._headtags)
   @property
   def head(self):
     return self._head
