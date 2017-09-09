@@ -76,7 +76,6 @@ class Dataset(Configurable):
     :param buff:
     :return:
     """
-    print("in _process_buff")
     len_cntr = Counter()
     for sent in buff:
       len_cntr[len(sent)] += 1

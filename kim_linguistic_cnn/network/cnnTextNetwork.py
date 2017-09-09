@@ -158,7 +158,7 @@ class cnnTextNetwork(Configurable):
       accuracy = float(acc_corrects) / float(acc_sents) * 100
       print("[EPOCH] %d Accuracy: %8.5f" % (epoch, accuracy))
 
-      if epoch - best_model >= 5:
+      if epoch - best_model >= 7:
         print('No improvement since the last {} epochs. Stopping training'.format(epoch - best_model))
         break
 

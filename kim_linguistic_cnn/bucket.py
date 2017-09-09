@@ -55,6 +55,7 @@ class Bucket(Configurable):
 
     if len(self._data) > 0:
       shape = (len(self._data), self._size, len(self._data[-1][-1]))
+
       data = np.zeros(shape, dtype=np.int64)
       for i, datum in enumerate(self._data):
         try:
@@ -63,11 +64,11 @@ class Bucket(Configurable):
         except:
           print("sentence %d has Error with data :"%(i+1))
           print(datum)
+          exit()
       self._data = data
 
       if len(self._head) > 0:
         shape = (len(self._head), self._size, len(self._head[-1][-1]))
-        print(shape)
         head = np.zeros(shape, dtype=np.int64)
         for i, datum in enumerate(self._head):
           try:
@@ -81,23 +82,22 @@ class Bucket(Configurable):
       self._head = head
 
       if len(self._wordtags) > 0:
-        shape = (len(self._wordtags), self._size)
-        wordtag = np.zeros(shape, dtype=np.float32)
+        shape = (len(self._wordtags), 110, 1)
+        wordtag = np.zeros(shape, dtype=np.long)
         for i, datum in enumerate(self._wordtags):
           try:
             datum = np.array(datum)
             wordtag[i, 0:len(datum)] = datum
           except Exception as e:
             print(e)
-            print("in word")
             print(self._wordtags[i + 1])
             print(datum)
             exit()
         self._wordtags = wordtag
 
       if len(self._headtags) > 0:
-        shape = (len(self._headtags), self._size)
-        headtag = np.zeros(shape, dtype=np.float32)
+        shape = (len(self._headtags), 110, 1)
+        headtag = np.zeros(shape, dtype=np.long)
         for i, datum in enumerate(self._headtags):
           try:
             datum = np.array(datum)

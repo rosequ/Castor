@@ -79,10 +79,10 @@ class Example(Configurable):
       self.data["words"].append(words[word])
 
     for dep_pos in self.sent["tags"]:
-      self.data["tags"].append(dep_pos)
+      self.data["tags"].append([dep_pos])
 
     for word in self.head["words"]:
       self.head_channel["words"].append(words[word])
 
     for dep_pos in self.head["tags"]:
-      self.head_channel["tags"].append(dep_pos)
+      self.head_channel["tags"].append([dep_pos])

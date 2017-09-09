@@ -25,6 +25,8 @@ class CNNText(nn.Module):
     Ks = args['kernel_sizes']
     self.mode = args['mode']
     tag_size = 0
+    tag_num = 85
+    tag_dim = 50
 
     if self.mode == 'linguistic_multichannel':
       input_channel = 4
@@ -34,7 +36,7 @@ class CNNText(nn.Module):
       input_channel = 1
 
     if 'linguistic' in self.mode:
-      tag_size = 85
+      tag_size = 1
 
     self.use_gpu = args['use_gpu']
     self.embed = nn.Embedding(words_num, words_dim)
@@ -44,6 +46,7 @@ class CNNText(nn.Module):
     self.non_static_embed.weight.data.copy_(torch.from_numpy(args['embeds']))
     self.static_embed.weight.requires_grad = False
 
+    self.tag_embed = nn.Embedding(tag_num, tag_dim)
     self.conv1 = nn.Conv2d(input_channel, output_channel, (3, words_dim + tag_size), padding=(2, 0))
     self.conv2 = nn.Conv2d(input_channel, output_channel, (4, words_dim + tag_size), padding=(3, 0))
     self.conv3 = nn.Conv2d(input_channel, output_channel, (7, words_dim + tag_size), padding=(6, 0))
@@ -81,19 +84,21 @@ class CNNText(nn.Module):
     elif self.mode == 'linguistic_static':
       words = x[:, :, 1]
       word_channel = self.static_embed(words)  # (batch, sent_len, embed_dim)
+      wordtag = self.embed(wordtag)
       word_channel = torch.cat([word_channel, wordtag], 1)
       head_words = head[:, :, 1]
       headword_channel = self.static_embed(head_words)
+      headtag = self.embed(headtag)
       headword_channel = torch.cat([headword_channel, headtag], 1)
       x = torch.stack([word_channel, headword_channel], dim=1) # (batch, channel_input, sent_len, embed_dim)
     elif self.mode == 'linguistic_nonstatic':
       words = x[:, :, 1]
       word_channel = self.non_static_embed(words)  # (batch, sent_len, embed_dim)
-      # word_channel = torch.cat([word_channel, wordtag.unsqueeze(0).expand(word_channel.size(0), *wordtag.size())], 2)
+      wordtag = self.embed(wordtag[:, :, 0])
       word_channel = torch.cat([word_channel, wordtag], 2)
-      # print(word_channel.size())
       head_words = head[:, :, 1]
       headword_channel = self.non_static_embed(head_words)
+      headtag = self.embed(headtag[:, :, 0])
       headword_channel = torch.cat([headword_channel, headtag], 2)
       x = torch.stack([word_channel, headword_channel], dim=1) # (batch, channel_input, sent_len, embed_dim)
     elif self.mode == 'linguistic_multichannel':
