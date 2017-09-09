@@ -104,6 +104,7 @@ class CNNText(nn.Module):
     elif self.mode == 'linguistic_multichannel':
       words = x[:, :, 1]
       word_channel_dynamic = self.non_static_embed(words)  # (batch, sent_len, embed_dim)
+      wordtag = self.embed(wordtag[:, :, 0])
       word_channel_dynamic = torch.cat([word_channel_dynamic, wordtag], 2)
 
       word_channel_static = self.static_embed(words)  # (batch, sent_len, embed_dim)
@@ -111,6 +112,7 @@ class CNNText(nn.Module):
 
       head_words = head[:, :, 1]
       headword_channel_dynamic = self.non_static_embed(head_words)
+      headtag = self.embed(headtag[:, :, 0])
       headword_channel_dynamic = torch.cat([headword_channel_dynamic, headtag], 2)
 
       headword_channel_static = self.static_embed(head_words)
