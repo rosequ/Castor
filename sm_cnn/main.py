@@ -1,24 +1,36 @@
 import numpy as np
 import random
-import torch
+import logging
 
+import torch
 from torchtext import data
 
 from args import get_args
 from trec_dataset import TrecDataset
 from evaluate import evaluate
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 args = get_args()
 config = args
+
 torch.manual_seed(args.seed)
+
 if not args.cuda:
     args.gpu = -1
 if torch.cuda.is_available() and args.cuda:
-    print("Note: You are using GPU for training")
+    logger.info("Note: You are using GPU for training")
     torch.cuda.set_device(args.gpu)
     torch.cuda.manual_seed(args.seed)
 if torch.cuda.is_available() and not args.cuda:
-    print("Warning: You have Cuda but do not use it. You are using CPU for training")
+    logger.info("Warning: You have Cuda but do not use it. You are using CPU for training")
 np.random.seed(args.seed)
 random.seed(args.seed)
 

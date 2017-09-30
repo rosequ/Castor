@@ -21,7 +21,8 @@ class SmPlusPlus(nn.Module):
         else:
             input_channel = 1
 
-        self.embed = nn.Embedding(questions_num, words_dim)
+        self.question_embed = nn.Embedding(questions_num, words_dim)
+        self.answer_embed = nn.Embedding(answers_num, words_dim)
         self.static_question_embed = nn.Embedding(questions_num, words_dim)
         self.nonstatic_question_embed = nn.Embedding(questions_num, words_dim)
         self.static_answer_embed = nn.Embedding(answers_num, words_dim)
@@ -44,8 +45,8 @@ class SmPlusPlus(nn.Module):
         x_ext = x.ext_feat
 
         if self.mode == 'rand':
-            question = self.embed(x_question).unsqueeze(1)
-            answer = self.embed(x_answer).unsqueeze(1) # (batch, sent_len, embed_dim)
+            question = self.question_embed(x_question).unsqueeze(1)
+            answer = self.answer_embed(x_answer).unsqueeze(1) # (batch, sent_len, embed_dim)
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         # actual SM model mode (Severyn & Moschitti, 2015)
@@ -73,9 +74,10 @@ class SmPlusPlus(nn.Module):
             exit()
 
         # append external features and feed to fc
-        x = torch.cat(x + x_ext, 1)
+        x.append(x_ext)
+        x = torch.cat(x, 1)
+
         x = F.tanh(self.combined_feature_vector(x))
         x = self.dropout(x)
         x = self.hidden(x)
-
         return x

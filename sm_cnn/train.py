@@ -1,16 +1,31 @@
-import torch
-import torch.nn as nn
 import time
 import os
 import numpy as np
 import random
 
+import logging
+import torch
+import torch.nn as nn
 from torchtext import data
+
 from args import get_args
 from model import SmPlusPlus
-
 from trec_dataset import TrecDataset
 from evaluate import evaluate
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+args = get_args()
+config = args
+
+torch.manual_seed(args.seed)
 
 def set_vectors(field, vector_path):
     if os.path.isfile(vector_path):
@@ -26,6 +41,7 @@ def set_vectors(field, vector_path):
                 field.vocab.vectors[i] = torch.FloatTensor(dim).uniform_(-0.25, 0.25)
     else:
         print("Error: Need word embedding pt file")
+        logger.error("Error: Need word embedding pt file")
         exit(1)
     return field
 
@@ -51,11 +67,11 @@ torch.manual_seed(args.seed)
 if not args.cuda:
     args.gpu = -1
 if torch.cuda.is_available() and args.cuda:
-    print("Note: You are using GPU for training")
+    logger.info("Note: You are using GPU for training")
     torch.cuda.set_device(args.gpu)
     torch.cuda.manual_seed(args.seed)
 if torch.cuda.is_available() and not args.cuda:
-    print("Warning: You have Cuda but not use it. You are using CPU for training.")
+    logger.warning("You have Cuda but you're using CPU for training.")
 np.random.seed(args.seed)
 random.seed(args.seed)
 
@@ -89,13 +105,13 @@ config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
 
-print("Dataset {}    Mode {}".format(args.dataset, args.mode))
-print("VOCAB num",len(QUESTION.vocab))
-print("LABEL.target_class:", len(LABEL.vocab))
-print("LABELS:", LABEL.vocab.itos)
-print("Train instance", len(train))
-print("Dev instance", len(dev))
-print("Test instance", len(test))
+logger.info("Dataset {}    Mode {}".format(args.dataset, args.mode))
+logger.info("VOCAB num",len(QUESTION.vocab))
+logger.info("LABEL.target_class:", len(LABEL.vocab))
+logger.info("LABELS:", LABEL.vocab.itos)
+logger.info("Train instance", len(train))
+logger.info("Dev instance", len(dev))
+logger.info("Test instance", len(test))
 
 if args.resume_snapshot:
     if args.cuda:
@@ -111,15 +127,13 @@ else:
 
     if args.cuda:
         model.cuda()
-        print("Shift model to GPU")
+        logger.info("Shift model to GPU")
 
 
 parameter = filter(lambda p: p.requires_grad, model.parameters())
 
 # the SM model originally follows SGD but Adadelta is used here
 optimizer = torch.optim.Adadelta(parameter, lr=args.lr, weight_decay=args.weight_decay)
-# optimizer = torch.optim.SGD(parameter, lr=args.lr, momentum=0.0, \
-#             weight_decay=1e-5)
 criterion = nn.CrossEntropyLoss()
 early_stop = False
 best_dev_map = 0
@@ -132,16 +146,15 @@ dev_log_template = ' '.join('{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0
 log_template = ' '.join('{:>6.0f},{:>5.0f},{:>9.0f},{:>5.0f}/{:<5.0f} {:>7.0f}%,{:>8.6f},{},{:12.4f},{}'.split(','))
 os.makedirs(args.save_path, exist_ok=True)
 os.makedirs(os.path.join(args.save_path, args.dataset), exist_ok=True)
-print(header)
+logger.info(header)
 
 index2label = np.array(LABEL.vocab.itos)
 index2qid = np.array(QID.vocab.itos)
 index2question = np.array(ANSWER.vocab.itos)
-index = np.where(index2question == "pineapple")
-print("index of pineapple:{}, {}".format(index, index2question[index]))
+
 while True:
     if early_stop:
-        print("Early Stopping. Epoch: {}, Best Dev Acc: {}".format(epoch, best_dev_map))
+        logger.info("Early Stopping. Epoch: {}, Best Dev Acc: {}".format(epoch, best_dev_map))
         break
     epoch += 1
     train_iter.init_epoch()
@@ -163,7 +176,8 @@ while True:
         # Evaluate performance on validation set
         if iterations % args.dev_every == 1:
             # switch model into evaluation mode
-            model.eval(); dev_iter.init_epoch()
+            model.eval()
+            dev_iter.init_epoch()
             n_dev_correct = 0
             dev_losses = []
             instance = []
@@ -175,18 +189,17 @@ while True:
                 n_dev_correct += (torch.max(scores, 1)[1].view(dev_batch.label.size()).data == dev_batch.label.data).sum()
                 dev_loss = criterion(scores, dev_batch.label)
                 dev_losses.append(dev_loss.data[0])
-
                 index_label = np.transpose(torch.max(scores, 1)[1].view(dev_batch.label.size()).cpu().data.numpy())
                 label_array = index2label[index_label]
+                # get the relevance scores
                 score_array = scores[:, 2].cpu().data.numpy()
-                # print and write the result
                 for i in range(dev_batch.batch_size):
                     this_qid, predicted_label, score, gold_label = qid_array[i], label_array[i], score_array[i], true_label_array[i]
                     instance.append((this_qid, predicted_label, score, gold_label))
 
 
             dev_map, dev_mrr = evaluate(instance)
-            print(dev_log_template.format(time.time() - start,
+            logger.info(dev_log_template.format(time.time() - start,
                                           epoch, iterations, 1 + batch_idx, len(train_iter),
                                           100. * (1 + batch_idx) / len(train_iter), loss.data[0],
                                           sum(dev_losses) / len(dev_losses), train_acc, dev_map))
@@ -205,7 +218,7 @@ while True:
 
         if iterations % args.log_every == 1:
             # print progress message
-            print(log_template.format(time.time() - start,
+            logger.info(log_template.format(time.time() - start,
                                       epoch, iterations, 1 + batch_idx, len(train_iter),
                                       100. * (1 + batch_idx) / len(train_iter), loss.data[0], ' ' * 8,
                                       n_correct / n_total * 100, ' ' * 12))
