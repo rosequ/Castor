@@ -7,9 +7,11 @@ Retrieval (SIGIR '15). ACM, New York, NY, USA, 373-382. DOI: http://dx.doi.org/1
 
 
 ### Requirements
+```
 nltk==3.2.2
 numpy==1.11.3
 pytorch==0.1.12
+```
 
 The code uses torchtext for text processing. Set torchtext:
 ```bash
@@ -27,15 +29,16 @@ make
 cd ..
 ```
 
-Download the word2vec model from [here] () and copy it to the `data/` folder.
+Download the word2vec model from [here] (https://drive.google.com/file/d/0B2u_nClt6NbzUmhOZU55eEo4QWM/view?usp=sharing) 
+and copy it to the `data/` folder.
 
 ### Training the model
 
 You can train the SM model for the 4 following configurations:
-1. random - the word embedddings are initialized randomly and are tuned during training
-2. static - the word embeddings are static (Severyn and Moschitti, SIGIR'15)
-3. non-static - the word embeddings are tuned during training
-4. multichannel - contains static and non-static channels for question and answer conv layers
+1. __random__ - the word embedddings are initialized randomly and are tuned during training
+2. __static__ - the word embeddings are static (Severyn and Moschitti, SIGIR'15)
+3. __non-static__ - the word embeddings are tuned during training
+4. __multichannel__ - contains static and non-static channels for question and answer conv layers
 
 To train on GPU 0 with static configuration:
 
@@ -60,14 +63,14 @@ python main.py --trained_model saves/TREC/multichannel_best_model.pt
 
 The performance on TrecQA dataset:
   
-### best dev 
+### Best dev 
 
 Metric |rand  |static|non-static|multichannel
 -------|------|------|----------|------------
 MAP    |0.8096|0.8162|0.8387    | 0.8274     
 MRR    |0.8560|0.8918|0.9058    | 0.8818
  
-### test
+### Test
 
 Metric |rand   |static|non-static|multichannel
 -------|-------|------|----------|------------
