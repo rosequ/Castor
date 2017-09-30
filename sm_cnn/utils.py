@@ -10,6 +10,7 @@ def convert(fname, vocab):
     save_file = '{}.pt'.format(fname)
     stoi, vectors, dim = [], array.array('d'), None
 
+    # TODO: fix by reading the .dimensions file
     vocab_size, dim = 2470719, 50
     W = np.memmap(fname, dtype=np.double, shape=(vocab_size, dim))
 

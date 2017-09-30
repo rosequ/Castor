@@ -12,7 +12,6 @@ class SmPlusPlus(nn.Module):
         words_dim = config.words_dim
         filter_width = config.filter_width
         self.mode = config.mode
-        self.use_ext = config.use_ext
 
         n_classes = config.target_class
         ext_feats_size = 4
@@ -34,7 +33,7 @@ class SmPlusPlus(nn.Module):
         self.conv_a = nn.Conv2d(input_channel, output_channel, (filter_width, words_dim), padding=(filter_width - 1, 0))
 
         self.dropout = nn.Dropout(config.dropout)
-        n_hidden = 2 * output_channel + (ext_feats_size if self.use_ext else 0)
+        n_hidden = 2 * output_channel + ext_feats_size
 
         self.combined_feature_vector = nn.Linear(n_hidden, n_hidden)
         self.hidden = nn.Linear(n_hidden, n_classes)
@@ -73,10 +72,8 @@ class SmPlusPlus(nn.Module):
             print("Unsupported Mode")
             exit()
 
-        if self.use_ext:
-            x.append(x_ext)
-        x = torch.cat(x, 1)
-
+        # append external features and feed to fc
+        x = torch.cat(x + x_ext, 1)
         x = F.tanh(self.combined_feature_vector(x))
         x = self.dropout(x)
         x = self.hidden(x)
