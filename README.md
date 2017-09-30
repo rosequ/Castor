@@ -16,11 +16,6 @@ As per [pytorch.org](pytorch.org),
 
 Other pytorch installation modalities (e.g. via ```pip```) can be seen at [pytorch.org](pytorch.org).
 
-We also recommend [gensim](https://radimrehurek.com/gensim/). We use some gensim modules to cache word embeddings.
-
-```conda install gensim```
-
-
 PyTorch has good support for GPU computations.
 CUDA installation guide for linux can be found [here](http://docs.nvidia.com/cuda/cuda-installation-guide-linux/)
 
