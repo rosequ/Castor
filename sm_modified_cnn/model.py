@@ -14,7 +14,7 @@ class SmPlusPlus(nn.Module):
         self.mode = config.mode
 
         n_classes = config.target_class
-        ext_feats_size = 4
+        ext_feats_size = 6
 
         if self.mode == 'multichannel':
             input_channel = 2
