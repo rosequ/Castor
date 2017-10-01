@@ -38,11 +38,13 @@ class SmPlusPlus(nn.Module):
 
         self.combined_feature_vector = nn.Linear(n_hidden, n_hidden)
         self.hidden = nn.Linear(n_hidden, n_classes)
+        self.logsoftmax = nn.LogSoftmax()
 
     def forward(self, x):
         x_question = x.question
         x_answer = x.answer
         x_ext = x.ext_feat
+        print(x_ext)
 
         if self.mode == 'rand':
             question = self.question_embed(x_question).unsqueeze(1)
@@ -80,4 +82,5 @@ class SmPlusPlus(nn.Module):
         x = F.tanh(self.combined_feature_vector(x))
         x = self.dropout(x)
         x = self.hidden(x)
+        x = self.logsoftmax(x)
         return x
