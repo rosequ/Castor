@@ -5,12 +5,18 @@ class TrecDataset(data.TabularDataset):
     dirname = 'data'
     @classmethod
 
-    def splits(cls, question_id, question_field, answer_field, external_field, label_field,
-               train='train.tsv', validation='dev.tsv', test='test.tsv'):
+    def splits(cls, question_id, question_field, question_pos, question_dep, head_question, head_question_pos,
+               head_question_dep, answer_field, answer_pos, answer_dep, head_answer, head_answer_pos, head_answer_dep,
+               external_field, label_field, train='train.tsv', validation='dev.tsv', test='test.tsv'):
         path = './data'
         prefix_name = 'trecqa.'
         return super(TrecDataset, cls).splits(
             os.path.join(path, prefix_name), train, validation, test,
             format='TSV', fields=[('qid', question_id), ('label', label_field), ('question', question_field),
-                                  ('answer', answer_field), ('ext_feat', external_field)]
-        )
+                                  ('answer', answer_field), ('ext_feat', external_field),
+                                  ('head_question', head_question), ('head_q_pos', head_question_pos),
+                                  ('head_q_dep', head_question_dep), ('question_word_pos',question_pos),
+                                  ('question_word_dep', question_dep),
+                                  ('head_answer', head_answer), ('head_a_pos', head_answer_pos),
+                                  ('head_a_dep', head_answer_dep), ('answer_word_pos',answer_pos),
+                                  ('answer_word_dep', answer_dep)])

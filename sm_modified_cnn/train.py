@@ -73,8 +73,21 @@ LABEL = data.Field(sequential=False)
 EXTERNAL = data.Field(sequential=False, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False,
                       preprocessing=data.Pipeline(lambda x: x.split()),
                       postprocessing=data.Pipeline(lambda x, train: [float(y) for y in x]))
+QUESTION_POS = data.Field(batch_first=True)
+QUESTION_DEP = data.Field(batch_first=True)
+ANSWER_POS = data.Field(batch_first=True)
+ANSWER_DEP = data.Field(batch_first=True)
+HEAD_QUESTION = data.Field(batch_first=True)
+HEAD_QUESTION_POS = data.Field(batch_first=True)
+HEAD_QUESTION_DEP = data.Field(batch_first=True)
+HEAD_ANSWER = data.Field(batch_first=True)
+HEAD_ANSWER_POS = data.Field(batch_first=True)
+HEAD_ANSWER_DEP = data.Field(batch_first=True)
+
 if config.dataset == 'TREC':
-    train, dev, test = TrecDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
+    train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, HEAD_QUESTION, HEAD_QUESTION_POS,
+                                          HEAD_QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, HEAD_ANSWER, HEAD_ANSWER_POS,
+                                          HEAD_ANSWER_DEP, EXTERNAL, LABEL)
 elif config.dataset == 'wiki':
     train, dev, test = WikiDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
 else:
