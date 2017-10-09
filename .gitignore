@@ -4,7 +4,9 @@ __pycache__
 .DS_Store
 .idea/
 *idfsim
-*.swp
 trec_eval.9.0/
 *.pt
 text/
+stanford-corenlp-full-2016-10-31
+data
+
