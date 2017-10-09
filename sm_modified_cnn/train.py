@@ -32,7 +32,6 @@ def set_vectors(field, vector_path):
                 field.vocab.vectors[i] = torch.FloatTensor(dim).uniform_(-0.25, 0.25)
     else:
         print("Error: Need word embedding pt file")
-        print("Error: Need word embedding pt file")
         exit(1)
     return field
 
@@ -98,10 +97,23 @@ QID.build_vocab(train, dev, test)
 QUESTION.build_vocab(train, dev, test)
 ANSWER.build_vocab(train, dev, test)
 LABEL.build_vocab(train, dev, test)
-
+QUESTION_POS.build_vocab(train, dev, test)
+QUESTION_DEP.build_vocab(train, dev, test)
+ANSWER_POS.build_vocab(train, dev, test)
+ANSWER_DEP.build_vocab(train, dev, test)
+HEAD_QUESTION.build_vocab(train, dev, test)
+HEAD_QUESTION_POS.build_vocab(train, dev, test)
+HEAD_QUESTION_DEP.build_vocab(train, dev, test)
+HEAD_ANSWER.build_vocab(train, dev, test)
+HEAD_ANSWER_POS.build_vocab(train, dev, test)
+HEAD_ANSWER_DEP.build_vocab(train, dev, test)
 
 QUESTION = set_vectors(QUESTION, args.vector_cache)
 ANSWER = set_vectors(ANSWER, args.vector_cache)
+QUESTION_POS = set_vectors(QUESTION_POS, args.pos_cache)
+QUESTION_DEP = set_vectors(QUESTION_DEP, args.dep_cache)
+ANSWER_POS = set_vectors(ANSWER_POS, args.pos_cache)
+ANSWER_DEP = set_vectors(ANSWER_DEP, args.dep_cache)
 
 train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
                                    sort=False, shuffle=True)
@@ -113,6 +125,10 @@ test_iter = data.Iterator(test, batch_size=args.batch_size, device=args.gpu, tra
 config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
+config.q_pos_vocab = len(QUESTION_POS.vocab)
+config.q_dep_vocab = len(QUESTION_DEP.vocab)
+config.a_pos_vocab = len(ANSWER_POS.vocab)
+config.a_dep_vocab = len(ANSWER_DEP.vocab)
 
 print("Dataset {}    Mode {}".format(args.dataset, args.mode))
 print("VOCAB num", len(QUESTION.vocab))
@@ -133,6 +149,14 @@ else:
     model.nonstatic_question_embed.weight.data.copy_(QUESTION.vocab.vectors)
     model.static_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
     model.nonstatic_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
+    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
+    model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
+    model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
+    model.nonstatic_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
 
     if args.cuda:
         model.cuda()
@@ -159,7 +183,7 @@ print(header)
 
 index2label = np.array(LABEL.vocab.itos)
 index2qid = np.array(QID.vocab.itos)
-index2question = np.array(ANSWER.vocab.itos)
+index2answer = np.array(ANSWER.vocab.itos)
 
 while True:
     if early_stop:
@@ -172,7 +196,12 @@ while True:
     for batch_idx, batch in enumerate(train_iter):
         iterations += 1
         model.train(); optimizer.zero_grad()
-        scores = model(batch)
+        try:
+            scores = model(batch)
+        except RuntimeError as e:
+            # for qid, tensor in zip(index2qid[batch.qid.cpu().data.numpy()], index2answer[batch.answer.cpu().data.numpy()]):
+                # print(qid, tensor)
+            print(e)
         n_correct += (torch.max(scores, 1)[1].view(batch.label.size()).data == batch.label.data).sum()
         n_total += batch.batch_size
         train_acc = 100. * n_correct / n_total

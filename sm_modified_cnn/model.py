@@ -11,9 +11,14 @@ class SmPlusPlus(nn.Module):
         answers_num = config.answers_num
         words_dim = config.words_dim
         filter_width = config.filter_width
+        q_pos_size = config.q_pos_vocab
+        q_dep_size = config.q_dep_vocab
+        a_pos_size = config.a_pos_vocab
+        a_dep_size = config.a_dep_vocab
         self.mode = config.mode
         pos_size = 44
         dep_size = 41
+        conv_dim = words_dim
 
         n_classes = config.target_class
         ext_feats_size = 4
@@ -26,9 +31,9 @@ class SmPlusPlus(nn.Module):
             input_channel = 1
 
         if 'linguistic_nonstatic' in self.mode or 'linguistic_static' in self.mode:
-            words_dim += pos_size + dep_size
+            conv_dim += (pos_size + dep_size)
         elif 'linguistic_head' in self.mode:
-            words_dim += (pos_size + dep_size + words_dim)
+            conv_dim += (pos_size + dep_size + words_dim)
 
         self.question_embed = nn.Embedding(questions_num, words_dim)
         self.answer_embed = nn.Embedding(answers_num, words_dim)
@@ -39,8 +44,22 @@ class SmPlusPlus(nn.Module):
         self.static_question_embed.weight.requires_grad = False
         self.static_answer_embed.weight.requires_grad = False
 
-        self.conv_q = nn.Conv2d(input_channel, output_channel, (filter_width, words_dim), padding=(filter_width - 1, 0))
-        self.conv_a = nn.Conv2d(input_channel, output_channel, (filter_width, words_dim), padding=(filter_width - 1, 0))
+        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_size)
+        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_size)
+        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_size)
+        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_size)
+        self.static_q_pos_embed.weight.requires_grad = False
+        self.static_a_pos_embed.weight.requires_grad = False
+
+        self.static_q_dep_embed = nn.Embedding(q_dep_size, dep_size)
+        self.static_a_dep_embed = nn.Embedding(a_dep_size, dep_size)
+        self.nonstatic_q_dep_embed = nn.Embedding(q_dep_size, dep_size)
+        self.nonstatic_a_dep_embed = nn.Embedding(a_dep_size, dep_size)
+        self.static_q_dep_embed.weight.requires_grad = False
+        self.static_a_dep_embed.weight.requires_grad = False
+
+        self.conv_q = nn.Conv2d(input_channel, output_channel, (filter_width, conv_dim), padding=(filter_width - 1, 0))
+        self.conv_a = nn.Conv2d(input_channel, output_channel, (filter_width, conv_dim), padding=(filter_width - 1, 0))
 
         self.dropout = nn.Dropout(config.dropout)
         n_hidden = 2 * output_channel + ext_feats_size
@@ -90,22 +109,22 @@ class SmPlusPlus(nn.Module):
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         elif self.mode == 'linguistic_static':
             x_question = self.static_question_embed(x_question)
-            x_q_pos = self.static_pos_embed(x_q_pos)
-            x_q_dep = self.static_dep_embed(x_q_dep)
+            x_q_pos = self.static_q_pos_embed(x_q_pos)
+            x_q_dep = self.static_q_dep_embed(x_q_dep)
             q_word_channel = torch.cat([x_question, x_q_pos, x_q_dep], 2)
             head_question = self.static_question_embed(head_q)
-            head_q_pos = self.static_pos_embed(head_q_pos)
-            head_q_dep = self.static_dep_embed(head_q_dep)
+            head_q_pos = self.static_q_pos_embed(head_q_pos)
+            head_q_dep = self.static_q_dep_embed(head_q_dep)
             q_head_channel = torch.cat([head_question, head_q_pos, head_q_dep], 2)
             question = torch.stack([q_head_channel, q_word_channel], dim=1)
 
             x_answer = self.static_answer_embed(x_answer)
-            x_a_pos = self.static_pos_embed(x_a_pos)
-            x_a_dep = x.answer_word_dep(x_a_dep)
+            x_a_pos = self.static_a_pos_embed(x_a_pos)
+            x_a_dep = self.static_a_dep_embed(x_a_dep)
             a_word_channel = torch.cat([x_answer, x_a_pos, x_a_dep], 2)
             head_a = self.static_answer_embed(head_a)
-            head_a_pos = self.static_pos_embed(head_a_pos)
-            head_a_dep = x.answer_word_dep(head_a_dep)
+            head_a_pos = self.static_a_pos_embed(head_a_pos)
+            head_a_dep = self.static_a_dep_embed(head_a_dep)
             a_head_channel = torch.cat([head_a, head_a_pos, head_a_dep], 2)
             answer = torch.stack([a_head_channel, a_word_channel], dim=1)
 
@@ -113,22 +132,22 @@ class SmPlusPlus(nn.Module):
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         elif self.mode == 'linguistic_nonstatic':
             x_question = self.nonstatic_question_embed(x_question)
-            x_q_pos = self.nonstatic_pos_embed(x_q_pos)
-            x_q_dep = self.nonstatic_dep_embed(x_q_dep)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_dep = self.nonstatic_q_dep_embed(x_q_dep)
             q_word_channel = torch.cat([x_question, x_q_pos, x_q_dep], 2)
             head_question = self.nonstatic_question_embed(head_q)
-            head_q_pos = self.nonstatic_pos_embed(head_q_pos)
-            head_q_dep = self.nonstatic_dep_embed(head_q_dep)
+            head_q_pos = self.nonstatic_q_pos_embed(head_q_pos)
+            head_q_dep = self.nonstatic_q_dep_embed(head_q_dep)
             q_head_channel = torch.cat([head_question, head_q_pos, head_q_dep], 2)
             question = torch.stack([q_head_channel, q_word_channel], dim=1)
 
-            x_answer = self.static_answer_embed(x.answer)
-            x_a_pos = self.static_pos_embed(x.answer_word_pos)
-            x_a_dep = x.answer_word_dep(x.answer_word_dep)
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_dep = self.nonstatic_a_dep_embed(x_a_dep)
             a_word_channel = torch.cat([x_answer, x_a_pos, x_a_dep], 2)
-            head_a = self.static_answer_embed(x.head_a)
-            head_a_pos = self.static_pos_embed(x.head_a_pos)
-            head_a_dep = x.answer_word_dep(x.head_a_dep)
+            head_a = self.nonstatic_answer_embed(head_a)
+            head_a_pos = self.nonstatic_a_pos_embed(head_a_pos)
+            head_a_dep = self.nonstatic_a_dep_embed(head_a_dep)
             a_head_channel = torch.cat([head_a, head_a_pos, head_a_dep], 2)
             answer = torch.stack([a_head_channel, a_word_channel], dim=1)
 
@@ -137,20 +156,20 @@ class SmPlusPlus(nn.Module):
 
         elif self.mode == 'linguistic_multichannel':
             x_question_static = self.static_question_embed(x_question)
-            x_q_pos_static = self.static_pos_embed(x_q_pos)
-            x_q_dep_static = self.static_dep_embed(x_q_dep)
+            x_q_pos_static = self.static_q_pos_embed(x_q_pos)
+            x_q_dep_static = self.static_q_dep_embed(x_q_dep)
 
             x_question_dynamic = self.nonstatic_question_embed(x_question)
-            x_q_pos_dynamic = self.nonstatic_pos_embed(x_q_pos)
-            x_q_dep_dynamic = self.nonstatic_dep_embed(x_q_dep)
+            x_q_pos_dynamic = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_dep_dynamic = self.nonstatic_q_dep_embed(x_q_dep)
 
             head_question_static = self.static_question_embed(head_q)
-            head_q_pos_static = self.static_pos_embed(head_q_pos)
-            head_q_dep_static = self.static_dep_embed(head_q_dep)
+            head_q_pos_static = self.static_q_pos_embed(head_q_pos)
+            head_q_dep_static = self.static_q_dep_embed(head_q_dep)
 
             head_question_dynamic = self.nonstatic_question_embed(head_q)
-            head_q_pos_dynamic = self.nonstatic_pos_embed(head_q_pos)
-            head_q_dep_dynamic = self.nonstatic_dep_embed(head_q_dep)
+            head_q_pos_dynamic = self.nonstatic_q_pos_embed(head_q_pos)
+            head_q_dep_dynamic = self.nonstatic_q_dep_embed(head_q_dep)
 
             q_word_channel_static = torch.cat([x_question_static, x_q_pos_static, x_q_dep_static], 2)
             q_word_channel_dynamic = torch.cat([x_question_dynamic, x_q_pos_dynamic, x_q_dep_dynamic], 2)
@@ -160,20 +179,20 @@ class SmPlusPlus(nn.Module):
                                             q_head_channel_dynamic], dim=1)
 
             x_answer_static = self.static_question_embed(x_answer)
-            x_a_pos_static = self.static_pos_embed(x_a_pos)
-            x_a_dep_static = self.static_dep_embed(x_a_dep)
+            x_a_pos_static = self.static_a_pos_embed(x_a_pos)
+            x_a_dep_static = self.static_a_dep_embed(x_a_dep)
 
             x_answer_dynamic = self.nonstatic_question_embed(x_answer)
-            x_a_pos_dynamic = self.nonstatic_pos_embed(x_a_pos)
-            x_a_dep_dynamic = self.nonstatic_dep_embed(x_a_dep)
+            x_a_pos_dynamic = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_dep_dynamic = self.nonstatic_a_dep_embed(x_a_dep)
 
             head_answer_static = self.static_question_embed(head_a)
-            head_a_pos_static = self.static_pos_embed(head_a_pos)
-            head_a_dep_static = self.static_dep_embed(head_a_dep)
+            head_a_pos_static = self.static_a_pos_embed(head_a_pos)
+            head_a_dep_static = self.static_a_dep_embed(head_a_dep)
 
             head_answer_dynamic = self.nonstatic_question_embed(head_a)
-            head_a_pos_dynamic = self.nonstatic_pos_embed(head_a_pos)
-            head_a_dep_dynamic = self.nonstatic_dep_embed(head_a_dep)
+            head_a_pos_dynamic = self.nonstatic_a_pos_embed(head_a_pos)
+            head_a_dep_dynamic = self.nonstatic_a_dep_embed(head_a_dep)
 
             a_word_channel_static = torch.cat([x_answer_static, x_a_pos_static, x_a_dep_static], 2)
             a_word_channel_dynamic = torch.cat([x_answer_dynamic, x_a_pos_dynamic, x_a_dep_dynamic], 2)

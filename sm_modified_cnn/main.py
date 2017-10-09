@@ -10,28 +10,19 @@ from trec_dataset import TrecDataset
 from wiki_dataset import WikiDataset
 from evaluate import evaluate
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
 args = get_args()
 config = args
 
+# Set random seed for reproducibility
 torch.manual_seed(args.seed)
-
 if not args.cuda:
     args.gpu = -1
 if torch.cuda.is_available() and args.cuda:
-    logger.info("Note: You are using GPU for training")
+    print("Note: You are using GPU for training")
     torch.cuda.set_device(args.gpu)
     torch.cuda.manual_seed(args.seed)
 if torch.cuda.is_available() and not args.cuda:
-    logger.info("Warning: You have Cuda but do not use it. You are using CPU for training")
+    print("You have Cuda but you're using CPU for training.")
 np.random.seed(args.seed)
 random.seed(args.seed)
 
@@ -42,8 +33,21 @@ LABEL = data.Field(sequential=False)
 EXTERNAL = data.Field(sequential=False, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False,
                       preprocessing=data.Pipeline(lambda x: x.split()),
                       postprocessing=data.Pipeline(lambda x, train: [float(y) for y in x]))
-if config.dataset == 'trec':
-    train, dev, test = TrecDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
+QUESTION_POS = data.Field(batch_first=True)
+QUESTION_DEP = data.Field(batch_first=True)
+ANSWER_POS = data.Field(batch_first=True)
+ANSWER_DEP = data.Field(batch_first=True)
+HEAD_QUESTION = data.Field(batch_first=True)
+HEAD_QUESTION_POS = data.Field(batch_first=True)
+HEAD_QUESTION_DEP = data.Field(batch_first=True)
+HEAD_ANSWER = data.Field(batch_first=True)
+HEAD_ANSWER_POS = data.Field(batch_first=True)
+HEAD_ANSWER_DEP = data.Field(batch_first=True)
+
+if config.dataset == 'TREC':
+    train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, HEAD_QUESTION, HEAD_QUESTION_POS,
+                                          HEAD_QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, HEAD_ANSWER, HEAD_ANSWER_POS,
+                                          HEAD_ANSWER_DEP, EXTERNAL, LABEL)
 elif config.dataset == 'wiki':
     train, dev, test = WikiDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
 else:
@@ -54,6 +58,16 @@ QID.build_vocab(train, dev, test)
 QUESTION.build_vocab(train, dev, test)
 ANSWER.build_vocab(train, dev, test)
 LABEL.build_vocab(train, dev, test)
+QUESTION_POS.build_vocab(train, dev, test)
+QUESTION_DEP.build_vocab(train, dev, test)
+ANSWER_POS.build_vocab(train, dev, test)
+ANSWER_DEP.build_vocab(train, dev, test)
+HEAD_QUESTION.build_vocab(train, dev, test)
+HEAD_QUESTION_POS.build_vocab(train, dev, test)
+HEAD_QUESTION_DEP.build_vocab(train, dev, test)
+HEAD_ANSWER.build_vocab(train, dev, test)
+HEAD_ANSWER_POS.build_vocab(train, dev, test)
+HEAD_ANSWER_DEP.build_vocab(train, dev, test)
 
 train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
                                    sort=False, shuffle=True)
