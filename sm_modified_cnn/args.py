@@ -7,7 +7,7 @@ def get_args():
     parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--mode', type=str, default='static')
-    parser.add_argument('--lr', type=float, default=0.9)
+    parser.add_argument('--lr', type=float, default=0.95)
     parser.add_argument('--seed', type=int, default=3435)
     parser.add_argument('--dataset', type=str, default='TREC')
     parser.add_argument('--resume_snapshot', type=str, default=None)
