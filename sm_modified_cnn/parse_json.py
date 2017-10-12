@@ -33,6 +33,12 @@ def get_dep_pos(string):
       this_head_dep.append(this_dep[head_index - 1])
       this_head_pos.append(this_pos[head_index - 1])
 
+  if (headwords[0].strip() == ''):
+      print("emptry string")
+      print(this_token)
+  if not (len(headwords) == len(this_head_pos) == len(this_head_dep) == len(this_pos) == len(this_dep)):
+      print("unequal lengths")
+      exit()
   return (headwords, this_head_pos, this_head_dep, this_pos, this_dep)
 
 if __name__ == '__main__':

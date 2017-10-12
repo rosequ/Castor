@@ -69,6 +69,22 @@ HEAD_ANSWER.build_vocab(train, dev, test)
 HEAD_ANSWER_POS.build_vocab(train, dev, test)
 HEAD_ANSWER_DEP.build_vocab(train, dev, test)
 
+QUESTION_DEP_FIELD = data.Field()
+QUESTION_DEP_FIELD.build_vocab(train, dev, test)
+QUESTION_DEP_FIELD.vocab.itos = set().union(QUESTION_DEP.vocab.itos, HEAD_QUESTION_DEP.vocab.itos)
+
+QUESTION_POS_FIELD = data.Field()
+QUESTION_POS_FIELD.build_vocab(train, dev, test)
+QUESTION_POS_FIELD.vocab.itos = set().union(QUESTION_POS.vocab.itos, HEAD_QUESTION_POS.vocab.itos)
+
+ANSWER_DEP_FIELD = data.Field()
+ANSWER_DEP_FIELD.build_vocab(train, dev, test)
+ANSWER_DEP_FIELD.vocab.itos = set().union(ANSWER_DEP.vocab.itos, HEAD_ANSWER_DEP.vocab.itos)
+
+ANSWER_POS_FIELD = data.Field()
+ANSWER_POS_FIELD.build_vocab(train, dev, test)
+ANSWER_POS_FIELD.vocab.itos = set().union(ANSWER_POS.vocab.itos, HEAD_ANSWER_POS.vocab.itos)
+
 train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
                                    sort=False, shuffle=True)
 dev_iter = data.Iterator(dev, batch_size=args.batch_size, device=args.gpu, train=False, repeat=False,
@@ -79,6 +95,10 @@ test_iter = data.Iterator(test, batch_size=args.batch_size, device=args.gpu, tra
 config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
+config.q_pos_vocab = len(QUESTION_POS_FIELD.vocab)
+config.q_dep_vocab = len(QUESTION_DEP_FIELD.vocab)
+config.a_pos_vocab = len(ANSWER_POS_FIELD.vocab)
+config.a_dep_vocab = len(ANSWER_DEP_FIELD.vocab)
 print("Label dict:", LABEL.vocab.itos)
 
 if args.cuda:

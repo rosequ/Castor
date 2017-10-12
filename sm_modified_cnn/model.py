@@ -16,8 +16,8 @@ class SmPlusPlus(nn.Module):
         a_pos_size = config.a_pos_vocab
         a_dep_size = config.a_dep_vocab
         self.mode = config.mode
-        pos_size = 44
-        dep_size = 41
+        pos_dim = 46
+        dep_dim = 43
         conv_dim = words_dim
 
         n_classes = config.target_class
@@ -25,15 +25,17 @@ class SmPlusPlus(nn.Module):
 
         if self.mode == 'linguistic_multichannel':
             input_channel = 4
-        elif self.mode == 'multichannel' or self.mode == 'linguistic_static' or self.mode == 'linguistic_nonstatic':
+        elif self.mode == 'multichannel' or self.mode == 'linguistic_static' or self.mode == 'linguistic_nonstatic'\
+                or self.mode == 'ling_head_multichannel':
             input_channel = 2
         else:
             input_channel = 1
 
-        if 'linguistic_nonstatic' in self.mode or 'linguistic_static' in self.mode:
-            conv_dim += (pos_size + dep_size)
-        elif 'linguistic_head' in self.mode:
-            conv_dim += (pos_size + dep_size + words_dim)
+        if 'linguistic_nonstatic' in self.mode or 'linguistic_static' in self.mode or \
+                        'linguistic_multichannel' in self.mode:
+            conv_dim += (pos_dim + dep_dim)
+        elif 'ling_head' in self.mode:
+            conv_dim += (pos_dim + dep_dim + words_dim)
 
         self.question_embed = nn.Embedding(questions_num, words_dim)
         self.answer_embed = nn.Embedding(answers_num, words_dim)
@@ -44,17 +46,17 @@ class SmPlusPlus(nn.Module):
         self.static_question_embed.weight.requires_grad = False
         self.static_answer_embed.weight.requires_grad = False
 
-        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_size)
-        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_size)
-        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_size)
-        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_size)
+        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
+        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
+        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
+        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
         self.static_q_pos_embed.weight.requires_grad = False
         self.static_a_pos_embed.weight.requires_grad = False
 
-        self.static_q_dep_embed = nn.Embedding(q_dep_size, dep_size)
-        self.static_a_dep_embed = nn.Embedding(a_dep_size, dep_size)
-        self.nonstatic_q_dep_embed = nn.Embedding(q_dep_size, dep_size)
-        self.nonstatic_a_dep_embed = nn.Embedding(a_dep_size, dep_size)
+        self.static_q_dep_embed = nn.Embedding(q_dep_size, dep_dim)
+        self.static_a_dep_embed = nn.Embedding(a_dep_size, dep_dim)
+        self.nonstatic_q_dep_embed = nn.Embedding(q_dep_size, dep_dim)
+        self.nonstatic_a_dep_embed = nn.Embedding(a_dep_size, dep_dim)
         self.static_q_dep_embed.weight.requires_grad = False
         self.static_a_dep_embed.weight.requires_grad = False
 
@@ -87,9 +89,9 @@ class SmPlusPlus(nn.Module):
             answer = self.answer_embed(x_answer).unsqueeze(1) # (batch, sent_len, embed_dim)
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
-        # actual SM model mode (Severyn & Moschitti, 2015)
         elif self.mode == 'static':
             question = self.static_question_embed(x_question).unsqueeze(1)
+            print(question.size())
             answer = self.static_answer_embed(x_answer).unsqueeze(1) # (batch, sent_len, embed_dim)
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
@@ -147,7 +149,11 @@ class SmPlusPlus(nn.Module):
             a_word_channel = torch.cat([x_answer, x_a_pos, x_a_dep], 2)
             head_a = self.nonstatic_answer_embed(head_a)
             head_a_pos = self.nonstatic_a_pos_embed(head_a_pos)
-            head_a_dep = self.nonstatic_a_dep_embed(head_a_dep)
+
+            try:
+                head_a_dep = self.nonstatic_a_dep_embed(head_a_dep)
+            except Exception as e:
+                print(torch.max(head_a_dep))
             a_head_channel = torch.cat([head_a, head_a_pos, head_a_dep], 2)
             answer = torch.stack([a_head_channel, a_word_channel], dim=1)
 
@@ -178,19 +184,19 @@ class SmPlusPlus(nn.Module):
             question_channel = torch.stack([q_word_channel_static, q_word_channel_dynamic, q_head_channel_static,
                                             q_head_channel_dynamic], dim=1)
 
-            x_answer_static = self.static_question_embed(x_answer)
+            x_answer_static = self.static_answer_embed(x_answer)
             x_a_pos_static = self.static_a_pos_embed(x_a_pos)
             x_a_dep_static = self.static_a_dep_embed(x_a_dep)
 
-            x_answer_dynamic = self.nonstatic_question_embed(x_answer)
+            x_answer_dynamic = self.nonstatic_answer_embed(x_answer)
             x_a_pos_dynamic = self.nonstatic_a_pos_embed(x_a_pos)
             x_a_dep_dynamic = self.nonstatic_a_dep_embed(x_a_dep)
 
-            head_answer_static = self.static_question_embed(head_a)
+            head_answer_static = self.static_answer_embed(head_a)
             head_a_pos_static = self.static_a_pos_embed(head_a_pos)
             head_a_dep_static = self.static_a_dep_embed(head_a_dep)
 
-            head_answer_dynamic = self.nonstatic_question_embed(head_a)
+            head_answer_dynamic = self.nonstatic_answer_embed(head_a)
             head_a_pos_dynamic = self.nonstatic_a_pos_embed(head_a_pos)
             head_a_dep_dynamic = self.nonstatic_a_dep_embed(head_a_dep)
 
@@ -202,6 +208,66 @@ class SmPlusPlus(nn.Module):
                                             a_head_channel_dynamic], dim=1)
 
             x = [F.tanh(self.conv_q(question_channel)).squeeze(3), F.tanh(self.conv_a(answer_channel)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif self.mode == 'ling_head_static':
+            x_question = self.static_question_embed(x_question)
+            x_q_head = self.static_question_embed(head_q)
+            x_q_pos = self.static_q_pos_embed(x_q_pos)
+            x_q_dep = self.static_q_dep_embed(x_q_dep)
+            question = torch.cat([x_question, x_q_head, x_q_pos, x_q_dep], 2).unsqueeze(1)
+
+            x_answer = self.static_answer_embed(x_answer)
+            x_a_head = self.static_answer_embed(head_a)
+            x_a_pos = self.static_a_pos_embed(x_a_pos)
+            x_a_dep = self.static_a_dep_embed(x_a_dep)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos, x_a_dep], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif self.mode == 'ling_head_nonstatic':
+            x_question = self.nonstatic_question_embed(x_question)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_dep = self.nonstatic_q_dep_embed(x_q_dep)
+            question = torch.cat([x_question, x_q_pos, x_q_dep, x_q_head], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_dep = self.nonstatic_a_dep_embed(x_a_dep)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos, x_a_dep], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif self.mode == 'ling_head_multichannel':
+            x_question_static = self.static_question_embed(x_question)
+            x_q_pos_static = self.static_q_pos_embed(x_q_pos)
+            x_q_dep_static = self.static_q_dep_embed(x_q_dep)
+            x_q_head_static = self.static_question_embed(head_q)
+
+            x_question_dynamic = self.nonstatic_question_embed(x_question)
+            x_q_pos_dynamic = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_dep_dynamic = self.nonstatic_q_dep_embed(x_q_dep)
+            x_q_head_dynamic = self.nonstatic_question_embed(head_q)
+
+            q_word_channel_static = torch.cat([x_question_static, x_q_head_static, x_q_pos_static, x_q_dep_static], 2)
+            q_word_channel_dynamic = torch.cat([x_question_dynamic, x_q_head_dynamic, x_q_pos_dynamic, x_q_dep_dynamic], 2)
+            question = torch.stack([q_word_channel_static, q_word_channel_dynamic], dim=1)
+
+            x_answer_static = self.static_answer_embed(x_answer)
+            x_a_pos_static = self.static_a_pos_embed(x_a_pos)
+            x_a_dep_static = self.static_a_dep_embed(x_a_dep)
+            x_a_head_static = self.static_answer_embed(head_a)
+
+            x_answer_dynamic = self.nonstatic_answer_embed(x_answer)
+            x_a_pos_dynamic = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_dep_dynamic = self.nonstatic_a_dep_embed(x_a_dep)
+            x_a_head_dynamic = self.static_answer_embed(head_a)
+
+            a_word_channel_static = torch.cat([x_answer_static, x_a_head_static, x_a_pos_static, x_a_dep_static], 2)
+            a_word_channel_dynamic = torch.cat([x_answer_dynamic, x_a_head_dynamic, x_a_pos_dynamic, x_a_dep_dynamic], 2)
+            answer = torch.stack([a_word_channel_static, a_word_channel_dynamic], dim=1)
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         else:
             print("Unsupported Mode")

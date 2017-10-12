@@ -35,19 +35,6 @@ def set_vectors(field, vector_path):
         exit(1)
     return field
 
-
-def regularize_loss(model, loss):
-    flattened_params = []
-    reg = args.weight_decay
-
-    for p in model.parameters():
-        f = p.data.clone()
-        flattened_params.append(f.view(-1))
-
-    fp = torch.cat(flattened_params)
-    loss = loss + 0.5 * reg * fp.norm() * fp.norm()
-    return loss
-
 # Set default configuration in : args.py
 args = get_args()
 config = args
@@ -110,10 +97,26 @@ HEAD_ANSWER_DEP.build_vocab(train, dev, test)
 
 QUESTION = set_vectors(QUESTION, args.vector_cache)
 ANSWER = set_vectors(ANSWER, args.vector_cache)
-QUESTION_POS = set_vectors(QUESTION_POS, args.pos_cache)
-QUESTION_DEP = set_vectors(QUESTION_DEP, args.dep_cache)
-ANSWER_POS = set_vectors(ANSWER_POS, args.pos_cache)
-ANSWER_DEP = set_vectors(ANSWER_DEP, args.dep_cache)
+
+QUESTION_DEP_FIELD = data.Field()
+QUESTION_DEP_FIELD.build_vocab(train, dev, test)
+QUESTION_DEP_FIELD.vocab.itos = set().union(QUESTION_DEP.vocab.itos, HEAD_QUESTION_DEP.vocab.itos)
+QUESTION_DEP_FIELD = set_vectors(QUESTION_DEP_FIELD, args.dep_cache)
+
+QUESTION_POS_FIELD = data.Field()
+QUESTION_POS_FIELD.build_vocab(train, dev, test)
+QUESTION_POS_FIELD.vocab.itos = set().union(QUESTION_POS.vocab.itos, HEAD_QUESTION_POS.vocab.itos)
+QUESTION_POS_FIELD = set_vectors(QUESTION_POS_FIELD, args.pos_cache)
+
+ANSWER_DEP_FIELD = data.Field()
+ANSWER_DEP_FIELD.build_vocab(train, dev, test)
+ANSWER_DEP_FIELD.vocab.itos = set().union(ANSWER_DEP.vocab.itos, HEAD_ANSWER_DEP.vocab.itos)
+ANSWER_DEP_FIELD = set_vectors(ANSWER_DEP_FIELD, args.dep_cache)
+
+ANSWER_POS_FIELD = data.Field()
+ANSWER_POS_FIELD.build_vocab(train, dev, test)
+ANSWER_POS_FIELD.vocab.itos = set().union(ANSWER_POS.vocab.itos, HEAD_ANSWER_POS.vocab.itos)
+ANSWER_POS_FIELD = set_vectors(ANSWER_POS_FIELD, args.pos_cache)
 
 train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
                                    sort=False, shuffle=True)
@@ -125,10 +128,10 @@ test_iter = data.Iterator(test, batch_size=args.batch_size, device=args.gpu, tra
 config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
-config.q_pos_vocab = len(QUESTION_POS.vocab)
-config.q_dep_vocab = len(QUESTION_DEP.vocab)
-config.a_pos_vocab = len(ANSWER_POS.vocab)
-config.a_dep_vocab = len(ANSWER_DEP.vocab)
+config.q_pos_vocab = len(QUESTION_POS_FIELD.vocab)
+config.q_dep_vocab = len(QUESTION_DEP_FIELD.vocab)
+config.a_pos_vocab = len(ANSWER_POS_FIELD.vocab)
+config.a_dep_vocab = len(ANSWER_DEP_FIELD.vocab)
 
 print("Dataset {}    Mode {}".format(args.dataset, args.mode))
 print("VOCAB num", len(QUESTION.vocab))
@@ -149,14 +152,16 @@ else:
     model.nonstatic_question_embed.weight.data.copy_(QUESTION.vocab.vectors)
     model.static_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
     model.nonstatic_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
-    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
-    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
-    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
-    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
-    model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
-    model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
-    model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
-    model.nonstatic_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
+    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS_FIELD.vocab.vectors)
+    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS_FIELD.vocab.vectors)
+    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS_FIELD.vocab.vectors)
+    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS_FIELD.vocab.vectors)
+    print(QUESTION_DEP_FIELD.vocab.vectors.size(), model.static_q_dep_embed.weight.data.size())
+    print(QUESTION_DEP_FIELD.vocab.itos)
+    model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP_FIELD.vocab.vectors)
+    model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP_FIELD.vocab.vectors)
+    model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP_FIELD.vocab.vectors)
+    model.nonstatic_a_dep_embed.weight.data.copy_(ANSWER_DEP_FIELD.vocab.vectors)
 
     if args.cuda:
         model.cuda()
@@ -184,6 +189,7 @@ print(header)
 index2label = np.array(LABEL.vocab.itos)
 index2qid = np.array(QID.vocab.itos)
 index2answer = np.array(ANSWER.vocab.itos)
+index2dep = np.array(HEAD_ANSWER_DEP.vocab.itos)
 
 while True:
     if early_stop:
@@ -196,18 +202,12 @@ while True:
     for batch_idx, batch in enumerate(train_iter):
         iterations += 1
         model.train(); optimizer.zero_grad()
-        try:
-            scores = model(batch)
-        except RuntimeError as e:
-            # for qid, tensor in zip(index2qid[batch.qid.cpu().data.numpy()], index2answer[batch.answer.cpu().data.numpy()]):
-                # print(qid, tensor)
-            print(e)
+        scores = model(batch)
         n_correct += (torch.max(scores, 1)[1].view(batch.label.size()).data == batch.label.data).sum()
         n_total += batch.batch_size
         train_acc = 100. * n_correct / n_total
 
         loss = criterion(scores, batch.label)
-        loss = regularize_loss(model, loss)
         loss.backward()
         optimizer.step()
 
