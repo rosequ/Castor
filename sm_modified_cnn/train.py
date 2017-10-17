@@ -63,17 +63,11 @@ QUESTION_POS = data.Field(batch_first=True)
 QUESTION_DEP = data.Field(batch_first=True)
 ANSWER_POS = data.Field(batch_first=True)
 ANSWER_DEP = data.Field(batch_first=True)
-HEAD_QUESTION = data.Field(batch_first=True)
-HEAD_QUESTION_POS = data.Field(batch_first=True)
-HEAD_QUESTION_DEP = data.Field(batch_first=True)
-HEAD_ANSWER = data.Field(batch_first=True)
-HEAD_ANSWER_POS = data.Field(batch_first=True)
-HEAD_ANSWER_DEP = data.Field(batch_first=True)
 
 if config.dataset == 'TREC':
-    train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, HEAD_QUESTION, HEAD_QUESTION_POS,
-                                          HEAD_QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, HEAD_ANSWER, HEAD_ANSWER_POS,
-                                          HEAD_ANSWER_DEP, EXTERNAL, LABEL)
+    train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
+                                          QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, ANSWER, ANSWER_POS,
+                                          ANSWER_DEP, EXTERNAL, LABEL)
 elif config.dataset == 'wiki':
     train, dev, test = WikiDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
 else:
@@ -88,35 +82,13 @@ QUESTION_POS.build_vocab(train, dev, test)
 QUESTION_DEP.build_vocab(train, dev, test)
 ANSWER_POS.build_vocab(train, dev, test)
 ANSWER_DEP.build_vocab(train, dev, test)
-HEAD_QUESTION.build_vocab(train, dev, test)
-HEAD_QUESTION_POS.build_vocab(train, dev, test)
-HEAD_QUESTION_DEP.build_vocab(train, dev, test)
-HEAD_ANSWER.build_vocab(train, dev, test)
-HEAD_ANSWER_POS.build_vocab(train, dev, test)
-HEAD_ANSWER_DEP.build_vocab(train, dev, test)
 
 QUESTION = set_vectors(QUESTION, args.vector_cache)
 ANSWER = set_vectors(ANSWER, args.vector_cache)
-
-QUESTION_DEP_FIELD = data.Field()
-QUESTION_DEP_FIELD.build_vocab(train, dev, test)
-QUESTION_DEP_FIELD.vocab.itos = set().union(QUESTION_DEP.vocab.itos, HEAD_QUESTION_DEP.vocab.itos)
-QUESTION_DEP_FIELD = set_vectors(QUESTION_DEP_FIELD, args.dep_cache)
-
-QUESTION_POS_FIELD = data.Field()
-QUESTION_POS_FIELD.build_vocab(train, dev, test)
-QUESTION_POS_FIELD.vocab.itos = set().union(QUESTION_POS.vocab.itos, HEAD_QUESTION_POS.vocab.itos)
-QUESTION_POS_FIELD = set_vectors(QUESTION_POS_FIELD, args.pos_cache)
-
-ANSWER_DEP_FIELD = data.Field()
-ANSWER_DEP_FIELD.build_vocab(train, dev, test)
-ANSWER_DEP_FIELD.vocab.itos = set().union(ANSWER_DEP.vocab.itos, HEAD_ANSWER_DEP.vocab.itos)
-ANSWER_DEP_FIELD = set_vectors(ANSWER_DEP_FIELD, args.dep_cache)
-
-ANSWER_POS_FIELD = data.Field()
-ANSWER_POS_FIELD.build_vocab(train, dev, test)
-ANSWER_POS_FIELD.vocab.itos = set().union(ANSWER_POS.vocab.itos, HEAD_ANSWER_POS.vocab.itos)
-ANSWER_POS_FIELD = set_vectors(ANSWER_POS_FIELD, args.pos_cache)
+QUESTION_POS = set_vectors(QUESTION_POS, args.pos_cache)
+ANSWER_POS = set_vectors(ANSWER_POS, args.pos_cache)
+QUESTION_DEP = set_vectors(QUESTION_DEP, args.dep_cache)
+ANSWER_DEP = set_vectors(ANSWER_DEP, args.dep_cache)
 
 train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
                                    sort=False, shuffle=True)
@@ -128,10 +100,10 @@ test_iter = data.Iterator(test, batch_size=args.batch_size, device=args.gpu, tra
 config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
-config.q_pos_vocab = len(QUESTION_POS_FIELD.vocab)
-config.q_dep_vocab = len(QUESTION_DEP_FIELD.vocab)
-config.a_pos_vocab = len(ANSWER_POS_FIELD.vocab)
-config.a_dep_vocab = len(ANSWER_DEP_FIELD.vocab)
+config.q_pos_vocab = len(QUESTION_POS.vocab)
+config.q_dep_vocab = len(QUESTION_DEP.vocab)
+config.a_pos_vocab = len(ANSWER_POS.vocab)
+config.a_dep_vocab = len(ANSWER_DEP.vocab)
 
 print("Dataset {}    Mode {}".format(args.dataset, args.mode))
 print("VOCAB num", len(QUESTION.vocab))
@@ -152,21 +124,18 @@ else:
     model.nonstatic_question_embed.weight.data.copy_(QUESTION.vocab.vectors)
     model.static_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
     model.nonstatic_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
-    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS_FIELD.vocab.vectors)
-    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS_FIELD.vocab.vectors)
-    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS_FIELD.vocab.vectors)
-    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS_FIELD.vocab.vectors)
-    print(QUESTION_DEP_FIELD.vocab.vectors.size(), model.static_q_dep_embed.weight.data.size())
-    print(QUESTION_DEP_FIELD.vocab.itos)
-    model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP_FIELD.vocab.vectors)
-    model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP_FIELD.vocab.vectors)
-    model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP_FIELD.vocab.vectors)
-    model.nonstatic_a_dep_embed.weight.data.copy_(ANSWER_DEP_FIELD.vocab.vectors)
+    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
+    model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
+    model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
+    model.nonstatic_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
 
     if args.cuda:
         model.cuda()
         print("Shift model to GPU")
-
 
 parameter = filter(lambda p: p.requires_grad, model.parameters())
 
@@ -189,7 +158,7 @@ print(header)
 index2label = np.array(LABEL.vocab.itos)
 index2qid = np.array(QID.vocab.itos)
 index2answer = np.array(ANSWER.vocab.itos)
-index2dep = np.array(HEAD_ANSWER_DEP.vocab.itos)
+index2dep = np.array(ANSWER_DEP.vocab.itos)
 
 while True:
     if early_stop:
