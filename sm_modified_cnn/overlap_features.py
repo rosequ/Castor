@@ -59,6 +59,19 @@ def compute_overlap_features(questions, answers, word2df=None, stoplist=None):
         feats_overlap.append(np.array([overlap, df_overlap]))
     return np.array(feats_overlap)
 
+
+def compute_idf_feats(questions, answers, word2dfs):
+    idf_feats = []
+    for question, answer in zip(questions, answers):
+        question_idf = [word2dfs[qword] for qword in question]
+        answer_idf = [word2dfs[aword] for aword in answer]
+
+        question_num = [qword.isnumeric() for qword in question]
+        answer_num = [aword.isnumeric() for aword in question]
+
+        idf_feats.append(np.array([question_idf, answer_idf, question_num, answer_num]))
+    return idf_feats
+
 def compute_overlap_idx(questions, answers, stoplist, q_max_sent_length, a_max_sent_length):
     stoplist = stoplist if stoplist else []
     q_indices, a_indices = [], []
@@ -113,7 +126,8 @@ if __name__ == '__main__':
     base_dir = args.dir
 
     if 'TrecQA' in base_dir:
-        sub_dirs = ['train/', 'train-all/', 'raw-dev/', 'raw-test/']
+        # sub_dirs = ['train/', 'train-all/', 'raw-dev/', 'raw-test/']
+        sub_dirs = ['raw-dev/']
     elif 'WikiQA' in base_dir:
         sub_dirs = ['train/', 'dev/', 'test/']
     else:
@@ -145,10 +159,16 @@ if __name__ == '__main__':
 
         overlap_feats = compute_overlap_features(questions, answers, stoplist=None, word2df=word2dfs)
         overlap_feats_stoplist = compute_overlap_features(questions, answers, stoplist=stoplist, word2df=word2dfs)
+        idf_feats = compute_idf_feats(questions, answers, word2dfs=word2dfs)
         overlap_feats = np.hstack([overlap_feats, overlap_feats_stoplist])
 
         with open(base_dir + sub + 'overlap_feats.txt', 'w') as f:
             for i in range(overlap_feats.shape[0]):
                 for j in range(4):
                     f.write(str(overlap_feats[i][j]) + ' ')
+                f.write('\n')
+
+        with open(base_dir + sub + 'idf_feats.txt', 'w') as f:
+            for feat in idf_feats:
+                f.write(' '.join(map(str, feat[0])) + '\t' + ' '.join(map(str, feat[1])))
                 f.write('\n')

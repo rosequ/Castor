@@ -84,6 +84,11 @@ class SmPlusPlus(nn.Module):
         head_a_pos = x.head_a_pos
         head_a_dep = x.head_a_dep
 
+        x_q_idf = x.question_idf
+        x_a_idf = x.answer_idf
+        x_q_isnum =  x.question_is_num
+        x_a_isnum = x.answer_is_numc
+
         if self.mode == 'rand':
             question = self.question_embed(x_question).unsqueeze(1)
             answer = self.answer_embed(x_answer).unsqueeze(1) # (batch, sent_len, embed_dim)
@@ -91,7 +96,6 @@ class SmPlusPlus(nn.Module):
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         elif self.mode == 'static':
             question = self.static_question_embed(x_question).unsqueeze(1)
-            print(question.size())
             answer = self.static_answer_embed(x_answer).unsqueeze(1) # (batch, sent_len, embed_dim)
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
@@ -149,11 +153,7 @@ class SmPlusPlus(nn.Module):
             a_word_channel = torch.cat([x_answer, x_a_pos, x_a_dep], 2)
             head_a = self.nonstatic_answer_embed(head_a)
             head_a_pos = self.nonstatic_a_pos_embed(head_a_pos)
-
-            try:
-                head_a_dep = self.nonstatic_a_dep_embed(head_a_dep)
-            except Exception as e:
-                print(torch.max(head_a_dep))
+            head_a_dep = self.nonstatic_a_dep_embed(head_a_dep)
             a_head_channel = torch.cat([head_a, head_a_pos, head_a_dep], 2)
             answer = torch.stack([a_head_channel, a_word_channel], dim=1)
 
