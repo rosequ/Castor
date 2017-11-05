@@ -2,21 +2,22 @@ import time
 import os
 import numpy as np
 import random
+from time import sleep
 
 import torch
 import torch.nn as nn
 from torchtext import data
+from GPUtil import getAvailable
 
 from args import get_args
 from model import SmPlusPlus
 from trec_dataset import TrecDataset
 from wiki_dataset import WikiDataset
 from evaluate import evaluate
+from creating_embedding import lookup_pos, pos_tags, universal_pos, dep_tags
 
 args = get_args()
 config = args
-
-torch.manual_seed(args.seed)
 
 def set_vectors(field, vector_path):
     if os.path.isfile(vector_path):
@@ -35,13 +36,12 @@ def set_vectors(field, vector_path):
         exit(1)
     return field
 
-def coarse_pos(pos_tag):
-
-    return pos_tag
-
-
-def fine_pos(pos_tag):
-    return pos_tag
+def set_pos_vectors(field, coarse):
+    dim = len(universal_pos) if coarse else len(pos_tags)
+    field.vocab.vectors = torch.Tensor(len(field.vocab), dim)
+    for i, token in enumerate(field.vocab.itos):
+        field.vocab.vectors[i] = lookup_pos(token, coarse)
+    return field
 
 # Set default configuration in : args.py
 args = get_args()
@@ -49,11 +49,17 @@ config = args
 
 # Set random seed for reproducibility
 torch.manual_seed(args.seed)
+torch.backends.cudnn.deterministic = True
+gpu_device = None
 if not args.cuda:
-    args.gpu = -1
+    gpu_device = -1
 if torch.cuda.is_available() and args.cuda:
     print("Note: You are using GPU for training")
-    torch.cuda.set_device(args.gpu)
+    while not getAvailable(order='first', limit=3, maxLoad=0.7, maxMemory=0.7):
+        print("All devices are occupied. Waiting...")
+        sleep(5)
+    gpu_device = getAvailable(order='first', limit=3, maxLoad=0.7, maxMemory=0.7)[0].item()
+    torch.cuda.set_device(gpu_device)
     torch.cuda.manual_seed(args.seed)
 if torch.cuda.is_available() and not args.cuda:
     print("You have Cuda but you're using CPU for training.")
@@ -64,17 +70,20 @@ QID = data.Field(sequential=False)
 QUESTION = data.Field(batch_first=True)
 ANSWER = data.Field(batch_first=True)
 LABEL = data.Field(sequential=False)
-EXTERNAL = data.Field(sequential=False, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False,
-                      preprocessing=data.Pipeline(lambda x: x.split()),
-                      postprocessing=data.Pipeline(lambda x, train: [float(y) for y in x]))
+EXTERNAL = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False,
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(y) for y in arr]))
 QUESTION_POS = data.Field(batch_first=True)
 QUESTION_DEP = data.Field(batch_first=True)
 ANSWER_POS = data.Field(batch_first=True)
 ANSWER_DEP = data.Field(batch_first=True)
-IDF_QUESTION = data.Field(batch_first=True)
-IDF_ANSWER = data.Field(batch_first=True)
-QUESTION_NUM = data.Field(sequential=False)
-ANSWER_NUM = data.Field(sequential=False)
+IDF_QUESTION = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+IDF_ANSWER = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+QUESTION_NUM = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+ANSWER_NUM = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
 
 if config.dataset == 'TREC':
     train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
@@ -95,28 +104,30 @@ QUESTION_POS.build_vocab(train, dev, test)
 QUESTION_DEP.build_vocab(train, dev, test)
 ANSWER_POS.build_vocab(train, dev, test)
 ANSWER_DEP.build_vocab(train, dev, test)
-IDF_QUESTION.build_vocab(train, dev, test)
-IDF_ANSWER.build_vocab(train, dev, test)
-QUESTION_NUM.build_vocab(train, dev, test)
-ANSWER_NUM.build_vocab(train, dev, test)
 
 QUESTION = set_vectors(QUESTION, args.vector_cache)
 ANSWER = set_vectors(ANSWER, args.vector_cache)
+QUESTION_POS = set_pos_vectors(QUESTION_POS, coarse=config.coarse)
+ANSWER_POS = set_pos_vectors(ANSWER_POS, coarse=config.coarse)
+QUESTION_DEP = set_vectors(QUESTION_DEP, args.dep_cache)
+ANSWER_DEP = set_vectors(ANSWER_DEP, args.dep_cache)
 
-train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
+train_iter = data.Iterator(train, batch_size=args.batch_size, device=gpu_device, train=True, repeat=False,
                                    sort=False, shuffle=True)
-dev_iter = data.Iterator(dev, batch_size=args.batch_size, device=args.gpu, train=False, repeat=False,
+dev_iter = data.Iterator(dev, batch_size=args.batch_size, device=gpu_device, train=False, repeat=False,
                                    sort=False, shuffle=False)
-test_iter = data.Iterator(test, batch_size=args.batch_size, device=args.gpu, train=False, repeat=False,
+test_iter = data.Iterator(test, batch_size=args.batch_size, device=gpu_device, train=False, repeat=False,
                                    sort=False, shuffle=False)
 
 config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
 config.q_pos_vocab = len(QUESTION_POS.vocab)
-config.q_dep_vocab = len(QUESTION_DEP.vocab)
 config.a_pos_vocab = len(ANSWER_POS.vocab)
+config.q_dep_vocab = len(QUESTION_DEP.vocab)
 config.a_dep_vocab = len(ANSWER_DEP.vocab)
+config.pos_dim = len(universal_pos) if config.coarse else len(pos_tags)
+config.dep_dim = len(dep_tags)
 
 print("Dataset {}    Mode {}".format(args.dataset, args.mode))
 print("VOCAB num", len(QUESTION.vocab))
@@ -128,7 +139,7 @@ print("Test instance", len(test))
 
 if args.resume_snapshot:
     if args.cuda:
-        model = torch.load(args.resume_snapshot, map_location=lambda storage, location: storage.cuda(args.gpu))
+        model = torch.load(args.resume_snapshot, map_location=lambda storage, location: storage.cuda(gpu_device))
     else:
         model = torch.load(args.resume_snapshot, map_location=lambda storage, location: storage)
 else:
@@ -137,10 +148,10 @@ else:
     model.nonstatic_question_embed.weight.data.copy_(QUESTION.vocab.vectors)
     model.static_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
     model.nonstatic_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
-    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
-    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
-    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
-    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    # model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    # model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    # model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    # model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
     model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
     model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
     model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
@@ -170,6 +181,8 @@ print(header)
 index2label = np.array(LABEL.vocab.itos)
 index2qid = np.array(QID.vocab.itos)
 index2answer = np.array(ANSWER.vocab.itos)
+index2dep = np.array(ANSWER_DEP.vocab.itos)
+fine_coarse = "coarse" if config.coarse else "fine"
 
 while True:
     if early_stop:
@@ -216,7 +229,9 @@ while True:
                     instance.append((this_qid, predicted_label, score, gold_label))
 
 
-            dev_map, dev_mrr = evaluate(instance, config.dataset, 'valid', config.mode)
+            dev_map, dev_mrr = evaluate(instance, config.dataset, 'valid_{}_{}_{}_{}_{}'
+                                        .format(args.mode, args.lr, args.output_channel, args.filter_width, fine_coarse)
+                                        , config.mode)
             print(dev_log_template.format(time.time() - start,
                                           epoch, iterations, 1 + batch_idx, len(train_iter),
                                           100. * (1 + batch_idx) / len(train_iter), loss.data[0],
@@ -226,7 +241,8 @@ while True:
             if dev_map > best_dev_map:
                 iters_not_improved = 0
                 best_dev_map = dev_map
-                snapshot_path = os.path.join(args.save_path, args.dataset, args.mode+'_best_model.pt')
+                snapshot_path = os.path.join(args.save_path, args.dataset, '{}_{}_{}_{}_{}_best_model.pt'
+                                             .format(args.mode, args.lr, args.output_channel, args.filter_width, fine_coarse))
                 torch.save(model, snapshot_path)
             else:
                 iters_not_improved += 1

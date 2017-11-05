@@ -25,6 +25,7 @@ def get_args():
     parser.add_argument('--dep_cache', type=str, default="data/dep.trecqa.pt")
     parser.add_argument('--trained_model', type=str, default="")
     parser.add_argument('--weight_decay',type=float, default=1e-5)
+    parser.add_argument('--coarse', action='store_true', help='if set uses coarse tags', dest='coarse')
 
     args = parser.parse_args()
     return args

@@ -1,9 +1,10 @@
 import numpy as np
 import random
-import logging
+from time import sleep
 
 import torch
 from torchtext import data
+from GPUtil import getAvailable
 
 from args import get_args
 from trec_dataset import TrecDataset
@@ -15,11 +16,16 @@ config = args
 
 # Set random seed for reproducibility
 torch.manual_seed(args.seed)
+gpu_device = None
 if not args.cuda:
-    args.gpu = -1
+    gpu_device = -1
 if torch.cuda.is_available() and args.cuda:
     print("Note: You are using GPU for training")
-    torch.cuda.set_device(args.gpu)
+    while not getAvailable(order = 'first', limit = 3, maxLoad = 0.7, maxMemory = 0.7):
+        print("All devices are occupied. Waiting...")
+        sleep(5)
+    gpu_device = getAvailable(order = 'first', limit = 3, maxLoad = 0.7, maxMemory = 0.7)[0].item()
+    torch.cuda.set_device(gpu_device)
     torch.cuda.manual_seed(args.seed)
 if torch.cuda.is_available() and not args.cuda:
     print("You have Cuda but you're using CPU for training.")
@@ -30,24 +36,26 @@ QID = data.Field(sequential=False)
 QUESTION = data.Field(batch_first=True)
 ANSWER = data.Field(batch_first=True)
 LABEL = data.Field(sequential=False)
-EXTERNAL = data.Field(sequential=False, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False,
-                      preprocessing=data.Pipeline(lambda x: x.split()),
-                      postprocessing=data.Pipeline(lambda x, train: [float(y) for y in x]))
+EXTERNAL = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False,
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(y) for y in arr]))
 QUESTION_POS = data.Field(batch_first=True)
 QUESTION_DEP = data.Field(batch_first=True)
 ANSWER_POS = data.Field(batch_first=True)
 ANSWER_DEP = data.Field(batch_first=True)
-HEAD_QUESTION = data.Field(batch_first=True)
-HEAD_QUESTION_POS = data.Field(batch_first=True)
-HEAD_QUESTION_DEP = data.Field(batch_first=True)
-HEAD_ANSWER = data.Field(batch_first=True)
-HEAD_ANSWER_POS = data.Field(batch_first=True)
-HEAD_ANSWER_DEP = data.Field(batch_first=True)
+IDF_QUESTION = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+IDF_ANSWER = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+QUESTION_NUM = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+ANSWER_NUM = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
+            postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
 
 if config.dataset == 'TREC':
-    train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, HEAD_QUESTION, HEAD_QUESTION_POS,
-                                          HEAD_QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, HEAD_ANSWER, HEAD_ANSWER_POS,
-                                          HEAD_ANSWER_DEP, EXTERNAL, LABEL)
+    train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
+                                          QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, ANSWER, ANSWER_POS,
+                                          ANSWER_DEP, EXTERNAL, LABEL, IDF_QUESTION, IDF_ANSWER, QUESTION_NUM,
+                                          ANSWER_NUM)
 elif config.dataset == 'wiki':
     train, dev, test = WikiDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
 else:
@@ -62,47 +70,39 @@ QUESTION_POS.build_vocab(train, dev, test)
 QUESTION_DEP.build_vocab(train, dev, test)
 ANSWER_POS.build_vocab(train, dev, test)
 ANSWER_DEP.build_vocab(train, dev, test)
-HEAD_QUESTION.build_vocab(train, dev, test)
-HEAD_QUESTION_POS.build_vocab(train, dev, test)
-HEAD_QUESTION_DEP.build_vocab(train, dev, test)
-HEAD_ANSWER.build_vocab(train, dev, test)
-HEAD_ANSWER_POS.build_vocab(train, dev, test)
-HEAD_ANSWER_DEP.build_vocab(train, dev, test)
 
-QUESTION_DEP_FIELD = data.Field()
-QUESTION_DEP_FIELD.build_vocab(train, dev, test)
-QUESTION_DEP_FIELD.vocab.itos = set().union(QUESTION_DEP.vocab.itos, HEAD_QUESTION_DEP.vocab.itos)
-
-QUESTION_POS_FIELD = data.Field()
-QUESTION_POS_FIELD.build_vocab(train, dev, test)
-QUESTION_POS_FIELD.vocab.itos = set().union(QUESTION_POS.vocab.itos, HEAD_QUESTION_POS.vocab.itos)
-
-ANSWER_DEP_FIELD = data.Field()
-ANSWER_DEP_FIELD.build_vocab(train, dev, test)
-ANSWER_DEP_FIELD.vocab.itos = set().union(ANSWER_DEP.vocab.itos, HEAD_ANSWER_DEP.vocab.itos)
-
-ANSWER_POS_FIELD = data.Field()
-ANSWER_POS_FIELD.build_vocab(train, dev, test)
-ANSWER_POS_FIELD.vocab.itos = set().union(ANSWER_POS.vocab.itos, HEAD_ANSWER_POS.vocab.itos)
-
-train_iter = data.Iterator(train, batch_size=args.batch_size, device=args.gpu, train=True, repeat=False,
+train_iter = data.Iterator(train, batch_size=args.batch_size, device=gpu_device, train=True, repeat=False,
                                    sort=False, shuffle=True)
-dev_iter = data.Iterator(dev, batch_size=args.batch_size, device=args.gpu, train=False, repeat=False,
+dev_iter = data.Iterator(dev, batch_size=args.batch_size, device=gpu_device, train=False, repeat=False,
                                    sort=False, shuffle=False)
-test_iter = data.Iterator(test, batch_size=args.batch_size, device=args.gpu, train=False, repeat=False,
+test_iter = data.Iterator(test, batch_size=args.batch_size, device=gpu_device, train=False, repeat=False,
+                                   sort=False, shuffle=False)
+
+train_iter = data.Iterator(train, batch_size=args.batch_size, device=gpu_device, train=True, repeat=False,
+                                   sort=False, shuffle=True)
+dev_iter = data.Iterator(dev, batch_size=args.batch_size, device=gpu_device, train=False, repeat=False,
+                                   sort=False, shuffle=False)
+test_iter = data.Iterator(test, batch_size=args.batch_size, device=gpu_device, train=False, repeat=False,
                                    sort=False, shuffle=False)
 
 config.target_class = len(LABEL.vocab)
 config.questions_num = len(QUESTION.vocab)
 config.answers_num = len(ANSWER.vocab)
-config.q_pos_vocab = len(QUESTION_POS_FIELD.vocab)
-config.q_dep_vocab = len(QUESTION_DEP_FIELD.vocab)
-config.a_pos_vocab = len(ANSWER_POS_FIELD.vocab)
-config.a_dep_vocab = len(ANSWER_DEP_FIELD.vocab)
-print("Label dict:", LABEL.vocab.itos)
+config.q_pos_vocab = len(QUESTION_POS.vocab)
+config.q_dep_vocab = len(QUESTION_DEP.vocab)
+config.a_pos_vocab = len(ANSWER_POS.vocab)
+config.a_dep_vocab = len(ANSWER_DEP.vocab)
+
+print("Dataset {}    Mode {}".format(args.dataset, args.mode))
+print("VOCAB num", len(QUESTION.vocab))
+print("LABEL.target_class:", len(LABEL.vocab))
+print("LABELS:", LABEL.vocab.itos)
+print("Train instance", len(train))
+print("Dev instance", len(dev))
+print("Test instance", len(test))
 
 if args.cuda:
-    model = torch.load(args.trained_model, map_location=lambda storage, location: storage.cuda(args.gpu))
+    model = torch.load(args.trained_model, map_location=lambda storage, location: storage.cuda(gpu_device))
 else:
     model = torch.load(args.trained_model, map_location=lambda storage,location: storage)
 
