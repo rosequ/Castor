@@ -40,21 +40,19 @@ class SmPlusPlus(nn.Module):
         self.static_question_embed.weight.requires_grad = False
         self.static_answer_embed.weight.requires_grad = False
 
-        print(pos_dim)
-        # nn.Embedding(q_pos_size, pos_dim)
-        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
-        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
-        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
-        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
-        self.static_q_pos_embed.weight.requires_grad = False
-        self.static_a_pos_embed.weight.requires_grad = False
-
         self.static_q_dep_embed = nn.Embedding(q_dep_size, dep_dim)
         self.static_a_dep_embed = nn.Embedding(a_dep_size, dep_dim)
         self.nonstatic_q_dep_embed = nn.Embedding(q_dep_size, dep_dim)
         self.nonstatic_a_dep_embed = nn.Embedding(a_dep_size, dep_dim)
         self.static_q_dep_embed.weight.requires_grad = False
         self.static_a_dep_embed.weight.requires_grad = False
+
+        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
+        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
+        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
+        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
+        self.static_q_pos_embed.weight.requires_grad = False
+        self.static_a_pos_embed.weight.requires_grad = False
 
         print(pos_dim, dep_dim, conv_dim, input_channel, output_channel, filter_width)
         self.conv_q = nn.Conv2d(input_channel, output_channel, (filter_width, conv_dim), padding=(filter_width - 1, 0))

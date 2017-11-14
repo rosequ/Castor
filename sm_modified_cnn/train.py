@@ -43,6 +43,27 @@ def set_pos_vectors(field, coarse):
         field.vocab.vectors[i] = lookup_pos(token, coarse)
     return field
 
+
+NER_full_tags = ['<unk>', '<pad>', 'O', 'PERSON', 'LOCATION', 'ORGANIZATION', 'NUMBER', 'ORDINAL', 'TIME',
+                 'ORDINAL', 'DURATION', 'DATE', 'MISC', 'NUMBER', 'MONEY', 'PERCENT']
+
+def set_ner_vectors(field, full):
+
+    # NER_tags = NER_full_tags if full else NER_basic_tags
+    NER_tags = NER_full_tags
+
+    def one_hot(tag, index):
+        tag_one_hot = np.zeros(len(tag), dtype=float)
+        tag_one_hot[index] = 1.0
+        return tag_one_hot
+
+    dim = len(NER_tags)
+    field.vocab.vectors = torch.Tensor(len(field.vocab), dim)
+    for i, token in enumerate(field.vocab.itos):
+        vectors = one_hot(NER_tags, NER_tags.index(token))
+        field.vocab.vectors[i] = torch.Tensor(vectors).view(-1, dim)
+    return field
+
 # Set default configuration in : args.py
 args = get_args()
 config = args
@@ -84,14 +105,19 @@ QUESTION_NUM = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_
             postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
 ANSWER_NUM = data.Field(sequential=True, tensor_type=torch.FloatTensor, batch_first=True, use_vocab=False, pad_token="0",
             postprocessing=data.Pipeline(lambda arr, _, train: [float(x) for x in arr]))
+QUESTION_NER = data.Field(batch_first=True)
+ANSWER_NER = data.Field(batch_first=True)
 
 if config.dataset == 'TREC':
     train, dev, test = TrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
                                           QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, ANSWER, ANSWER_POS,
                                           ANSWER_DEP, EXTERNAL, LABEL, IDF_QUESTION, IDF_ANSWER, QUESTION_NUM,
-                                          ANSWER_NUM)
+                                          ANSWER_NUM, QUESTION_NER, ANSWER_NER)
 elif config.dataset == 'wiki':
-    train, dev, test = WikiDataset.splits(QID, QUESTION, ANSWER, EXTERNAL, LABEL)
+    train, dev, test = WikiDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
+                                          QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, ANSWER, ANSWER_POS,
+                                          ANSWER_DEP, EXTERNAL, LABEL, IDF_QUESTION, IDF_ANSWER, QUESTION_NUM,
+                                          ANSWER_NUM, QUESTION_NER, ANSWER_NER)
 else:
     print("Unsupported dataset")
     exit()
@@ -104,13 +130,8 @@ QUESTION_POS.build_vocab(train, dev, test)
 QUESTION_DEP.build_vocab(train, dev, test)
 ANSWER_POS.build_vocab(train, dev, test)
 ANSWER_DEP.build_vocab(train, dev, test)
-
-QUESTION = set_vectors(QUESTION, args.vector_cache)
-ANSWER = set_vectors(ANSWER, args.vector_cache)
-QUESTION_POS = set_pos_vectors(QUESTION_POS, coarse=config.coarse)
-ANSWER_POS = set_pos_vectors(ANSWER_POS, coarse=config.coarse)
-QUESTION_DEP = set_vectors(QUESTION_DEP, args.dep_cache)
-ANSWER_DEP = set_vectors(ANSWER_DEP, args.dep_cache)
+QUESTION_NER.build_vocab(train, dev, test)
+ANSWER_NER.build_vocab(train, dev, test)
 
 train_iter = data.Iterator(train, batch_size=args.batch_size, device=gpu_device, train=True, repeat=False,
                                    sort=False, shuffle=True)
@@ -126,8 +147,12 @@ config.q_pos_vocab = len(QUESTION_POS.vocab)
 config.a_pos_vocab = len(ANSWER_POS.vocab)
 config.q_dep_vocab = len(QUESTION_DEP.vocab)
 config.a_dep_vocab = len(ANSWER_DEP.vocab)
+config.q_ner_size = len(QUESTION_NER.vocab)
+config.a_ner_size = len(ANSWER_NER.vocab)
+config.ner_dim = len(NER_full_tags)
 config.pos_dim = len(universal_pos) if config.coarse else len(pos_tags)
 config.dep_dim = len(dep_tags)
+config.ner_full = args.ner_full
 
 print("Dataset {}    Mode {}".format(args.dataset, args.mode))
 print("VOCAB num", len(QUESTION.vocab))
@@ -148,14 +173,16 @@ else:
     model.nonstatic_question_embed.weight.data.copy_(QUESTION.vocab.vectors)
     model.static_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
     model.nonstatic_answer_embed.weight.data.copy_(ANSWER.vocab.vectors)
-    # model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
-    # model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
-    # model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
-    # model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    model.static_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    model.nonstatic_q_pos_embed.weight.data.copy_(QUESTION_POS.vocab.vectors)
+    model.static_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
+    model.nonstatic_a_pos_embed.weight.data.copy_(ANSWER_POS.vocab.vectors)
     model.static_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
     model.nonstatic_q_dep_embed.weight.data.copy_(QUESTION_DEP.vocab.vectors)
     model.static_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
     model.nonstatic_a_dep_embed.weight.data.copy_(ANSWER_DEP.vocab.vectors)
+    model.nonstatic_q_ner_embed.weight.data.copy_(QUESTION_NER.vocab.vectors)
+    model.nonstatic_a_ner_embed.weight.data.copy_(ANSWER_NER.vocab.vectors)
     if args.cuda:
         print("Shift model to GPU")
         model.cuda()
@@ -229,8 +256,9 @@ while True:
                     instance.append((this_qid, predicted_label, score, gold_label))
 
 
-            dev_map, dev_mrr = evaluate(instance, config.dataset, 'valid_{}_{}_{}_{}_{}'
-                                        .format(args.mode, args.lr, args.output_channel, args.filter_width, fine_coarse)
+            dev_map, dev_mrr = evaluate(instance, config.dataset, 'valid_{}_{}_{}_{}_{}_{}_{}'
+                                        .format(args.mode, args.lr, args.output_channel, args.filter_width, fine_coarse,
+                                                args.seed, args.batch_size)
                                         , config.mode)
             print(dev_log_template.format(time.time() - start,
                                           epoch, iterations, 1 + batch_idx, len(train_iter),
@@ -241,8 +269,9 @@ while True:
             if dev_map > best_dev_map:
                 iters_not_improved = 0
                 best_dev_map = dev_map
-                snapshot_path = os.path.join(args.save_path, args.dataset, '{}_{}_{}_{}_{}_best_model.pt'
-                                             .format(args.mode, args.lr, args.output_channel, args.filter_width, fine_coarse))
+                snapshot_path = os.path.join(args.save_path, args.dataset, '{}_{}_{}_{}_{}_{}_{}_best_model.pt'
+                                             .format(args.mode, args.lr, args.output_channel, args.filter_width,
+                                                     fine_coarse, args.seed, args.batch_size))
                 torch.save(model, snapshot_path)
             else:
                 iters_not_improved += 1

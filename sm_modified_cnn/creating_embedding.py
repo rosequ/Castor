@@ -12,8 +12,13 @@ pos_tags = ['<unk>', '<pad>', 'RBS', "''", 'VB', '#', '.', 'WP$', 'SYM', 'LS', '
             'POS', ',', 'PDT', 'UH', 'VBG', '$', 'PRP$', 'VBZ', 'PRP', ':', 'WP', 'IN', 'CC', 'DT',
             'JJ', 'RP', 'EX', 'NO_POS']
 
+# pos_tags = ['<unk>', '<pad>', 'RBS', "''", 'VB', '#', '.', 'WP$', 'SYM', 'LS', 'WDT', 'NNP', 'TO', 'CD', 'NNPS',
+#             'NN', 'MD', 'RBR', 'JJS', 'VBN', 'VBP', '``', 'WRB', 'JJR', 'VBD', 'FW', 'RB', 'NNS',
+#             'POS', ',', 'PDT', 'UH', 'VBG', '$', 'PRP$', 'VBZ', 'PRP', ':', 'WP', 'IN', 'CC', 'DT',
+#             'JJ', 'RP', 'EX', 'NO_POS', '-LRB-', '-RRB-']
+
 to_universal_pos = {"<unk>":  "<unk>", "<pad>":  "<pad>", "!":  ".", "#":  ".", "$":  ".", "''":  ".", "(":  ".",
-                   ")":  ".", ",":  ".", "-LRB-":  ".", "-RRB-":  ".", ".":  ".", ":  ":  ".", "?":  ".", "CC":  "CONJ",
+                   ")":  ".", ",":  ".", ".":  ".", ":":  "X", "?":  ".", "CC":  "CONJ",
                    "CD":  "NUM", "CD|RB":  "X", "DT":  "DET", "EX":  "DET", "FW":  "X", "IN":  "ADP", "IN|RP":  "ADP",
                    "JJ":  "ADJ", "JJR":  "ADJ", "JJRJR":  "ADJ", "JJS":  "ADJ", "JJ|RB":  "ADJ", "JJ|VBG":  "ADJ",
                    "LS":  "X", "MD":  "VERB", "NN":  "NOUN", "NNP":  "NOUN", "NNPS":  "NOUN", "NNS":  "NOUN",
@@ -22,7 +27,23 @@ to_universal_pos = {"<unk>":  "<unk>", "<pad>":  "<pad>", "!":  ".", "#":  ".", 
                    "RBS":  "ADV", "RB|RP":  "ADV", "RB|VBG":  "ADV", "RN":  "X", "RP":  "PRT", "SYM":  "X", "TO":  "PRT",
                    "UH":  "X", "VB":  "VERB", "VBD":  "VERB", "VBD|VBN":  "VERB", "VBG":  "VERB", "VBG|NN":  "VERB",
                    "VBN":  "VERB", "VBP":  "VERB", "VBP|TO":  "VERB", "VBZ":  "VERB", "VP":  "VERB", "WDT":  "DET",
-                   "WH":  "X", "WP":  "PRON", "WP$":  "PRON", "WRB":  "ADV", "``":  ".", "NO_POS":"NO_POS", ":":"X"}
+                   "WH":  "X", "WP":  "PRON", "WP$":  "PRON", "WRB":  "ADV", "``":  ".", "NO_POS":"NO_POS",
+                    "-LRB-": ".", "-RRB-": "."}
+
+#todo: replace ":": "X" with ":": "."
+# to_universal_pos = {"<unk>":  "<unk>", "<pad>":  "<pad>", "!":  ".", "#":  ".", "$":  ".", "''":  ".", "(":  ".",
+#                    ")":  ".", ",":  ".", "-LRB-":  ".", "-RRB-":  ".", ".":  ".", ":  ":  ".", "?":  ".", "CC":  "CONJ",
+#                    "CD":  "NUM", "CD|RB":  "X", "DT":  "DET", "EX":  "DET", "FW":  "X", "IN":  "ADP", "IN|RP":  "ADP",
+#                    "JJ":  "ADJ", "JJR":  "ADJ", "JJRJR":  "ADJ", "JJS":  "ADJ", "JJ|RB":  "ADJ", "JJ|VBG":  "ADJ",
+#                    "LS":  "X", "MD":  "VERB", "NN":  "NOUN", "NNP":  "NOUN", "NNPS":  "NOUN", "NNS":  "NOUN",
+#                    "NN|NNS":  "NOUN","NN|SYM":  "NOUN", "NN|VBG":  "NOUN", "NP":  "NOUN", "PDT":  "DET", "POS":  "PRT",
+#                    "PRP":  "PRON", "PRP$":  "PRON", "PRP|VBP":  "PRON", "PRT":  "PRT", "RB":  "ADV", "RBR":  "ADV",
+#                    "RBS":  "ADV", "RB|RP":  "ADV", "RB|VBG":  "ADV", "RN":  "X", "RP":  "PRT", "SYM":  "X", "TO":  "PRT",
+#                    "UH":  "X", "VB":  "VERB", "VBD":  "VERB", "VBD|VBN":  "VERB", "VBG":  "VERB", "VBG|NN":  "VERB",
+#                    "VBN":  "VERB", "VBP":  "VERB", "VBP|TO":  "VERB", "VBZ":  "VERB", "VP":  "VERB", "WDT":  "DET",
+#                    "WH":  "X", "WP":  "PRON", "WP$":  "PRON", "WRB":  "ADV", "``":  ".", "NO_POS":"NO_POS", ":": ".",
+#                     "-LRB-": ".", "-RRB-": "."}
+
 universal_pos = ['<unk>', '<pad>', 'VERB', 'NOUN', 'PRON', 'ADJ', 'ADV', 'ADP', 'CONJ', 'DET', 'NUM', 'PRT', 'X', '.', 'NO_POS']
 
 def one_hot(tag, index):
@@ -42,6 +63,7 @@ def lookup_pos(tag, coarse):
         print(e)
         vectors = torch.FloatTensor(pos_dim).uniform_(-0.25, 0.25)
     vectors = torch.Tensor(vectors).view(-1, pos_dim)
+    # vectors = torch.Tensor(vectors)
     return vectors
 
 def create_embeddings():

@@ -26,11 +26,12 @@ class SmPlusPlus(nn.Module):
 
         if self.mode == 'linguistic_multichannel' or self.mode == 'ling_sep':
             input_channel = 4
-        elif self.mode == 'ling_sep_pos' or self.mode == 'ling_sep_dep':
+        elif self.mode == 'ling_sep_pos' or self.mode == 'ling_sep_dep' or self.mode == 'ling_sep_no_head':
             input_channel = 3
         elif self.mode == 'multichannel' or self.mode == 'linguistic_static' or self.mode == 'linguistic_nonstatic'\
                 or self.mode == 'ling_head_multichannel' or self.mode == 'linguistic_nonstatic_pos_only' or \
-            self.mode == 'linguistic_nonstatic_dep_only':
+            self.mode == 'linguistic_nonstatic_dep_only' or self. mode == 'ling_sep_pos_no_head' or  \
+            self.mode == 'ling_sep_dep_no_head':
             input_channel = 2
         else:
             input_channel = 1
@@ -40,6 +41,8 @@ class SmPlusPlus(nn.Module):
             conv_dim += (pos_dim + dep_dim)
         elif self.mode == 'linguistic_nonstatic_pos_only':
             conv_dim += (pos_dim)
+        elif self.mode == 'linguistic_nonstatic_pos_idf':
+            conv_dim += (pos_dim + 1)
         elif self.mode == 'linguistic_nonstatic_dep_only':
             conv_dim += (dep_dim)
         elif self.mode == 'ling_head' or self.mode=='ling_head_nonstatic':
@@ -49,14 +52,30 @@ class SmPlusPlus(nn.Module):
         elif 'ling_head_dep' in self.mode:
             conv_dim += (dep_dim + words_dim)
 
-        if 'idf' in self.mode:
+        if self.mode == 'idf':
             conv_dim = (words_dim + 1)
 
-        if 'num' in self.mode:
+        if self.mode == 'num':
             conv_dim = (words_dim + 1)
 
-        if 'idf_num' in self.mode:
+        if self.mode == 'idf_num':
             conv_dim = (words_dim + 2)
+
+        if 'idf_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + 1)
+        elif 'num_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + 1)
+        elif 'ner_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + config.ner_dim)
+        elif 'idf_num_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + 2)
+        elif 'idf_ner_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + 1 + config.ner_dim)
+        elif 'ner_num_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + 1 + config.ner_dim)
+        elif 'idf_num_ner_best' in self.mode:
+            conv_dim += (pos_dim + words_dim + 2 + config.ner_dim)
+
 
         print(conv_dim, input_channel)
         self.question_embed = nn.Embedding(questions_num, words_dim)
@@ -67,13 +86,6 @@ class SmPlusPlus(nn.Module):
         self.nonstatic_answer_embed = nn.Embedding(answers_num, words_dim)
         self.static_question_embed.weight.requires_grad = False
         self.static_answer_embed.weight.requires_grad = False
-
-        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
-        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
-        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
-        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
-        self.static_q_pos_embed.weight.requires_grad = False
-        self.static_a_pos_embed.weight.requires_grad = False
 
         self.static_q_dep_embed = nn.Embedding(q_dep_size, dep_dim)
         self.static_a_dep_embed = nn.Embedding(a_dep_size, dep_dim)
@@ -90,6 +102,19 @@ class SmPlusPlus(nn.Module):
 
         self.combined_feature_vector = nn.Linear(n_hidden, n_hidden)
         self.hidden = nn.Linear(n_hidden, n_classes)
+
+        self.static_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
+        self.static_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
+        self.nonstatic_q_pos_embed = nn.Embedding(q_pos_size, pos_dim)
+        self.nonstatic_a_pos_embed = nn.Embedding(a_pos_size, pos_dim)
+        self.static_q_pos_embed.weight.requires_grad = False
+        self.static_a_pos_embed.weight.requires_grad = False
+
+        q_ner_size = config.q_ner_size
+        a_ner_size = config.a_ner_size
+        ner_dim = config.ner_dim
+        self.nonstatic_q_ner_embed = nn.Embedding(q_ner_size, ner_dim)
+        self.nonstatic_a_ner_embed = nn.Embedding(a_ner_size, ner_dim)
 
     def forward(self, x):
         x_question = x.question
@@ -110,6 +135,9 @@ class SmPlusPlus(nn.Module):
         x_a_idf = x.answer_idf
         x_q_isnum = x.question_is_num
         x_a_isnum = x.answer_is_num
+
+        x_q_ner = x.question_ner
+        x_a_ner = x.answer_ner
 
         # assuming everything is non-static here onwards
         if self.mode == 'idf':
@@ -152,6 +180,26 @@ class SmPlusPlus(nn.Module):
 
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        # todo: a good idea but needs substantial changes
+        # elif self.mode == 'linguistic_nonstatic_pos_idf':
+        #     x_question = self.nonstatic_question_embed(x_question)
+        #     x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+        #     q_word_channel = torch.cat([x_question, x_q_pos, x_q_idf.unsqueeze(2)], 2)
+        #     head_question = self.nonstatic_question_embed(head_q)
+        #     head_q_pos = self.nonstatic_q_pos_embed(head_q_pos)
+        #     q_head_channel = torch.cat([head_question, head_q_pos], 2)
+        #     question = torch.stack([q_head_channel, q_word_channel], dim=1)
+        #
+        #     x_answer = self.nonstatic_answer_embed(x_answer)
+        #     x_answer = torch.cat([x_answer, x_a_idf.unsqueeze(2)], dim=2)
+        #     x_answer = self.nonstatic_answer_embed(x_answer)
+        #     x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+        #     a_word_channel = torch.cat([x_answer, x_a_pos], 2)
+        #     head_a = self.nonstatic_answer_embed(head_a)
+        #     head_a_pos = self.nonstatic_a_pos_embed(head_a_pos)
+        #     a_head_channel = torch.cat([head_a, head_a_pos], 2)
+        #     answer = torch.stack([a_head_channel, a_word_channel], dim=1)
+        #     x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
         elif self.mode == 'linguistic_nonstatic_dep_only':
             x_question = self.nonstatic_question_embed(x_question)
             x_q_dep = self.nonstatic_q_dep_embed(x_q_dep)
@@ -184,6 +232,115 @@ class SmPlusPlus(nn.Module):
 
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'idf_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_question = torch.cat([x_question, x_q_idf.unsqueeze(2)], dim=2)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            question = torch.cat([x_question, x_q_pos, x_q_head], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_answer = torch.cat([x_answer, x_a_idf.unsqueeze(2)], dim=2)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'num_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_question = torch.cat([x_question, x_q_isnum.unsqueeze(2)], dim=2)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            question = torch.cat([x_question, x_q_pos, x_q_head], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_answer = torch.cat([x_answer, x_a_isnum.unsqueeze(2)], dim=2)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'ner_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_ner = self.nonstatic_q_ner_embed(x_q_ner)
+            question = torch.cat([x_question, x_q_pos, x_q_head, x_q_ner], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_ner = self.nonstatic_a_ner_embed(x_a_ner)
+            answer = torch.cat([x_answer, x_a_pos, x_a_head, x_a_ner], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'idf_num_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_question = torch.cat([x_question, x_q_idf.unsqueeze(2), x_q_isnum.unsqueeze(2)], dim=2)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            question = torch.cat([x_question, x_q_pos, x_q_head], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_answer = torch.cat([x_answer, x_a_idf.unsqueeze(2),  x_a_isnum.unsqueeze(2)], dim=2)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'idf_ner_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_ner = self.nonstatic_q_ner_embed(x_q_ner)
+            question = torch.cat([x_question, x_q_pos, x_q_head, x_q_idf.unsqueeze(2), x_q_ner], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_ner = self.nonstatic_a_ner_embed(x_a_ner)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos, x_a_idf.unsqueeze(2), x_a_ner], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'ner_num_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_ner = self.nonstatic_q_ner_embed(x_q_ner)
+            question = torch.cat([x_question, x_q_pos, x_q_head, x_q_ner,
+                                  x_q_isnum.unsqueeze(2)], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_ner = self.nonstatic_a_ner_embed(x_a_ner)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos, x_a_ner,
+                                x_a_isnum.unsqueeze(2)], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        elif 'idf_num_ner_best' in self.mode:
+            x_question = self.nonstatic_question_embed(x_question)
+            x_q_head = self.nonstatic_question_embed(head_q)
+            x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+            x_q_ner = self.nonstatic_q_ner_embed(x_q_ner)
+            question = torch.cat([x_question, x_q_pos, x_q_head, x_q_idf.unsqueeze(2), x_q_isnum.unsqueeze(2),
+                                  x_q_ner], 2).unsqueeze(1)
+
+            x_answer = self.nonstatic_answer_embed(x_answer)
+            x_a_head = self.nonstatic_answer_embed(head_a)
+            x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+            x_a_ner = self.nonstatic_a_ner_embed(x_a_ner)
+            answer = torch.cat([x_answer, x_a_head, x_a_pos, x_a_idf.unsqueeze(2), x_a_isnum.unsqueeze(2),
+                                x_a_ner], 2).unsqueeze(1)
+
+            x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+            x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         elif self.mode == 'ling_head_dep':
             x_question = self.nonstatic_question_embed(x_question)
             x_q_head = self.nonstatic_question_embed(head_q)
@@ -197,6 +354,42 @@ class SmPlusPlus(nn.Module):
 
             x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
             x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        # elif self.mode == 'ling_sep_dep_no_head':
+        #     x_question = self.nonstatic_question_embed(x_question)
+        #     x_q_dep = self.nonstatic_q_dep_embed(x_q_dep)
+        #     print(x_question.size(), x_q_dep.size())
+        #     question = torch.stack([x_question, x_q_dep], 2).unsqueeze(1)
+        #
+        #     x_answer = self.nonstatic_answer_embed(x_answer)
+        #     x_a_dep = self.nonstatic_a_dep_embed(x_a_dep)
+        #     answer = torch.stack([x_answer, x_a_dep], 2).unsqueeze(1)
+        #
+        #     x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+        #     x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        # elif self.mode == 'ling_sep_pos_no_head':
+        #     x_question = self.nonstatic_question_embed(x_question)
+        #     x_q_pos = self.nonstatic_q_pos_embed(x_q_pos)
+        #     question = torch.stack([x_question, x_q_pos], 2).unsqueeze(1)
+        #
+        #     x_answer = self.nonstatic_answer_embed(x_answer)
+        #     x_a_pos = self.nonstatic_a_pos_embed(x_a_pos)
+        #     answer = torch.stack([x_answer, x_a_pos], 2).unsqueeze(1)
+        #
+        #     x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+        #     x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
+        # elif self.mode == 'ling_sep_no_head':
+        #     x_question = self.nonstatic_question_embed(x_question)
+        #     x_q_pos = self.nonstatic_q_dep_embed(x_q_pos)
+        #     x_q_dep = self.nonstatic_q_dep_embed(x_q_dep)
+        #     question = torch.stack([x_question, x_q_dep, x_q_pos], 2).unsqueeze(1)
+        #
+        #     x_answer = self.nonstatic_answer_embed(x_answer)
+        #     x_a_pos = self.nonstatic_a_dep_embed(x_a_pos)
+        #     x_a_dep = self.nonstatic_a_dep_embed(x_a_dep)
+        #     answer = torch.stack([x_answer, x_a_dep, x_a_pos], 2).unsqueeze(1)
+        #
+        #     x = [F.tanh(self.conv_q(question)).squeeze(3), F.tanh(self.conv_a(answer)).squeeze(3)]
+        #     x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # max-over-time pooling
         elif self.mode == 'ling_sep_pos':
             x_question = self.nonstatic_question_embed(x_question)
             x_q_head = self.nonstatic_question_embed(head_q)

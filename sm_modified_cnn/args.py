@@ -8,7 +8,7 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--mode', type=str, default='static')
     parser.add_argument('--lr', type=float, default=0.95)
-    parser.add_argument('--seed', type=int, default=3435)
+    parser.add_argument('--seed', type=int, default=1367)
     parser.add_argument('--dataset', type=str, help='TREC|wiki', default='TREC')
     parser.add_argument('--resume_snapshot', type=str, default=None)
     parser.add_argument('--dev_every', type=int, default=30)
@@ -26,6 +26,7 @@ def get_args():
     parser.add_argument('--trained_model', type=str, default="")
     parser.add_argument('--weight_decay',type=float, default=1e-5)
     parser.add_argument('--coarse', action='store_true', help='if set uses coarse tags', dest='coarse')
+    parser.add_argument('--ner_full', action='store_true', help='if set uses coarse tags', dest='ner_full')
 
     args = parser.parse_args()
     return args
