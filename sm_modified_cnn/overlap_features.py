@@ -126,6 +126,8 @@ if __name__ == '__main__':
 
     if 'TrecQA' in base_dir:
         sub_dirs = ['train/', 'train-all/', 'raw-dev/', 'raw-test/']
+    elif 'cleanQA' in base_dir:
+        sub_dirs = ['train/', 'train-all/', 'clean-dev/', 'clean-test/']
     elif 'WikiQA' in base_dir:
         sub_dirs = ['train/', 'dev/', 'test/']
     else:

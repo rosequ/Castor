@@ -12,12 +12,11 @@ CURRENT_DIR=$(pwd)
 #cd $CURRENT_DIR
 
 #ToDo: add linguistic features for WikiQA dataset
-python parse_json.py --input ../../data/WikiQA/
-python overlap_features.py --dir ../../data/WikiQA/
-python parse_ner.py --input ../../data/WikiQA/
+python parse_ling.py --input ../../data/cleanQA/
+python overlap_features.py --dir ../../data/cleanQA/
 
-cd ../../data/WikiQA
-cd dev/; paste id.txt sim.txt a.toks b.toks overlap_feats.txt dependency_feats  idf_feats.txt ner_feats > $CURRENT_DIR/data/wikiqa.dev.tsv; cd ..
-cd test/; paste id.txt sim.txt a.toks b.toks overlap_feats.txt dependency_feats idf_feats.txt ner_feats > $CURRENT_DIR/data/wikiqa.test.tsv; cd ..
-cd train/; paste id.txt sim.txt a.toks b.toks overlap_feats.txt dependency_feats idf_feats.txt ner_feats > $CURRENT_DIR/data/wikiqa.train.tsv; cd ..
+cd ../../data/cleanQA
+cd clean-dev/; paste id.txt sim.txt a.toks b.toks overlap_feats.txt dependency_feats  idf_feats.txt  > $CURRENT_DIR/data/cleanqa.dev.tsv; cd ..
+cd clean-test/; paste id.txt sim.txt a.toks b.toks overlap_feats.txt dependency_feats idf_feats.txt  > $CURRENT_DIR/data/cleanqa.test.tsv; cd ..
+cd train-all/; paste id.txt sim.txt a.toks b.toks overlap_feats.txt dependency_feats idf_feats.txt  > $CURRENT_DIR/data/cleanqa.train.tsv; cd ..
 cd $CURRENT_DIR

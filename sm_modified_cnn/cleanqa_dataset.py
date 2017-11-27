@@ -1,7 +1,7 @@
 from torchtext import data
 import os
 
-class WikiDataset(data.TabularDataset):
+class CleanTrecDataset(data.TabularDataset):
     dirname = 'data'
     @classmethod
 
@@ -9,10 +9,10 @@ class WikiDataset(data.TabularDataset):
                head_question_dep, answer_field, answer_pos, answer_dep, head_answer, head_answer_pos, head_answer_dep,
                external_field, label_field, idf_question, idf_answer, question_is_num, answer_is_num, question_ner,
                answer_ner, root='.data',
-               train='wikiqa.train.tsv', validation='wikiqa.dev.tsv', test='wikiqa.test.tsv'):
+               train='cleanqa.train.tsv', validation='cleanqa.dev.tsv', test='cleanqa.test.tsv'):
         path = './data'
-        prefix_name = 'wikiqa.'
-        return super(WikiDataset, cls).splits(
+        prefix_name = 'cleanqa.'
+        return super(CleanTrecDataset, cls).splits(
             path, root, train, validation, test,
             format='TSV', fields=[('qid', question_id), ('label', label_field), ('question', question_field),
                                   ('answer', answer_field), ('ext_feat', external_field),

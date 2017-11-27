@@ -7,15 +7,15 @@ dep_tags = ['<unk>', '<pad>', 'csubj', 'aux', 'acl:relcl', 'mark', 'expl', 'amod
             'cc', 'nsubj', 'csubjpass', 'appos', 'conj', 'nummod', 'discourse', 'auxpass', 'ccomp',
             'nmod:tmod', 'iobj', 'compound:prt', 'dobj', 'neg', 'NO_DEP']
 
-pos_tags = ['<unk>', '<pad>', 'RBS', "''", 'VB', '#', '.', 'WP$', 'SYM', 'LS', 'WDT', 'NNP', 'TO', 'CD', 'NNPS',
-            'NN', 'MD', 'RBR', 'JJS', 'VBN', 'VBP', '``', 'WRB', 'JJR', 'VBD', 'FW', 'RB', 'NNS',
-            'POS', ',', 'PDT', 'UH', 'VBG', '$', 'PRP$', 'VBZ', 'PRP', ':', 'WP', 'IN', 'CC', 'DT',
-            'JJ', 'RP', 'EX', 'NO_POS']
-
 # pos_tags = ['<unk>', '<pad>', 'RBS', "''", 'VB', '#', '.', 'WP$', 'SYM', 'LS', 'WDT', 'NNP', 'TO', 'CD', 'NNPS',
 #             'NN', 'MD', 'RBR', 'JJS', 'VBN', 'VBP', '``', 'WRB', 'JJR', 'VBD', 'FW', 'RB', 'NNS',
 #             'POS', ',', 'PDT', 'UH', 'VBG', '$', 'PRP$', 'VBZ', 'PRP', ':', 'WP', 'IN', 'CC', 'DT',
-#             'JJ', 'RP', 'EX', 'NO_POS', '-LRB-', '-RRB-']
+#             'JJ', 'RP', 'EX', 'NO_POS']
+
+pos_tags = ['<unk>', '<pad>', 'RBS', "''", 'VB', '#', '.', 'WP$', 'SYM', 'LS', 'WDT', 'NNP', 'TO', 'CD', 'NNPS',
+            'NN', 'MD', 'RBR', 'JJS', 'VBN', 'VBP', '``', 'WRB', 'JJR', 'VBD', 'FW', 'RB', 'NNS',
+            'POS', ',', 'PDT', 'UH', 'VBG', '$', 'PRP$', 'VBZ', 'PRP', ':', 'WP', 'IN', 'CC', 'DT',
+            'JJ', 'RP', 'EX', 'NO_POS', '-LRB-', '-RRB-']
 
 to_universal_pos = {"<unk>":  "<unk>", "<pad>":  "<pad>", "!":  ".", "#":  ".", "$":  ".", "''":  ".", "(":  ".",
                    ")":  ".", ",":  ".", ".":  ".", ":":  "X", "?":  ".", "CC":  "CONJ",
@@ -29,20 +29,6 @@ to_universal_pos = {"<unk>":  "<unk>", "<pad>":  "<pad>", "!":  ".", "#":  ".", 
                    "VBN":  "VERB", "VBP":  "VERB", "VBP|TO":  "VERB", "VBZ":  "VERB", "VP":  "VERB", "WDT":  "DET",
                    "WH":  "X", "WP":  "PRON", "WP$":  "PRON", "WRB":  "ADV", "``":  ".", "NO_POS":"NO_POS",
                     "-LRB-": ".", "-RRB-": "."}
-
-#todo: replace ":": "X" with ":": "."
-# to_universal_pos = {"<unk>":  "<unk>", "<pad>":  "<pad>", "!":  ".", "#":  ".", "$":  ".", "''":  ".", "(":  ".",
-#                    ")":  ".", ",":  ".", "-LRB-":  ".", "-RRB-":  ".", ".":  ".", ":  ":  ".", "?":  ".", "CC":  "CONJ",
-#                    "CD":  "NUM", "CD|RB":  "X", "DT":  "DET", "EX":  "DET", "FW":  "X", "IN":  "ADP", "IN|RP":  "ADP",
-#                    "JJ":  "ADJ", "JJR":  "ADJ", "JJRJR":  "ADJ", "JJS":  "ADJ", "JJ|RB":  "ADJ", "JJ|VBG":  "ADJ",
-#                    "LS":  "X", "MD":  "VERB", "NN":  "NOUN", "NNP":  "NOUN", "NNPS":  "NOUN", "NNS":  "NOUN",
-#                    "NN|NNS":  "NOUN","NN|SYM":  "NOUN", "NN|VBG":  "NOUN", "NP":  "NOUN", "PDT":  "DET", "POS":  "PRT",
-#                    "PRP":  "PRON", "PRP$":  "PRON", "PRP|VBP":  "PRON", "PRT":  "PRT", "RB":  "ADV", "RBR":  "ADV",
-#                    "RBS":  "ADV", "RB|RP":  "ADV", "RB|VBG":  "ADV", "RN":  "X", "RP":  "PRT", "SYM":  "X", "TO":  "PRT",
-#                    "UH":  "X", "VB":  "VERB", "VBD":  "VERB", "VBD|VBN":  "VERB", "VBG":  "VERB", "VBG|NN":  "VERB",
-#                    "VBN":  "VERB", "VBP":  "VERB", "VBP|TO":  "VERB", "VBZ":  "VERB", "VP":  "VERB", "WDT":  "DET",
-#                    "WH":  "X", "WP":  "PRON", "WP$":  "PRON", "WRB":  "ADV", "``":  ".", "NO_POS":"NO_POS", ":": ".",
-#                     "-LRB-": ".", "-RRB-": "."}
 
 universal_pos = ['<unk>', '<pad>', 'VERB', 'NOUN', 'PRON', 'ADJ', 'ADV', 'ADP', 'CONJ', 'DET', 'NUM', 'PRT', 'X', '.', 'NO_POS']
 
