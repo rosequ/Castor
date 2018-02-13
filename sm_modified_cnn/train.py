@@ -13,7 +13,6 @@ from args import get_args
 from model import SmPlusPlus
 from trec_dataset import TrecDataset
 from wiki_dataset import WikiDataset
-from cleanqa_dataset import CleanTrecDataset
 from evaluate import evaluate
 from creating_embedding import lookup_pos, pos_tags, universal_pos, dep_tags
 
@@ -118,12 +117,7 @@ elif config.dataset == 'wiki':
     train, dev, test = WikiDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
                                           QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, ANSWER, ANSWER_POS,
                                           ANSWER_DEP, EXTERNAL, LABEL, IDF_QUESTION, IDF_ANSWER, QUESTION_NUM,
-                                          ANSWER_NUM, QUESTION_NER, ANSWER_NER)
-elif config.dataset == 'clean_trec':
-    train, dev, test = CleanTrecDataset.splits(QID, QUESTION, QUESTION_POS, QUESTION_DEP, QUESTION, QUESTION_POS,
-                                          QUESTION_DEP, ANSWER, ANSWER_POS, ANSWER_DEP, ANSWER, ANSWER_POS,
-                                          ANSWER_DEP, EXTERNAL, LABEL, IDF_QUESTION, IDF_ANSWER, QUESTION_NUM,
-                                          ANSWER_NUM, QUESTION_NER, ANSWER_NER)
+                                          ANSWER_NUM)
 else:
     print("Unsupported dataset")
     exit()
@@ -245,6 +239,8 @@ while True:
         loss = criterion(scores, batch.label)
         loss.backward()
         optimizer.step()
+
+        # Evaluate performance on validation set
         if iterations % args.dev_every == 1:
             # switch model into evaluation mode
             model.eval()

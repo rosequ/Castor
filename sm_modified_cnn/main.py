@@ -110,8 +110,8 @@ config.pos_dim = len(universal_pos) if config.coarse else len(pos_tags)
 config.dep_dim = len(dep_tags)
 config.ner_full = args.ner_full
 
-print("Dataset {}    Mode {}".format(args.dataset, args.mode))
-print(args.seed, args.trained_model, args.lr, args.mode, args.filter_width)
+# print("Dataset {}    Mode {}".format(args.dataset, args.mode))
+# print(args.seed, args.trained_model, args.lr, args.mode, args.filter_width)
 
 if args.cuda:
     model = torch.load(args.trained_model, map_location=lambda storage, location: storage.cuda(gpu_device))
@@ -142,10 +142,12 @@ def predict(dataset, test_mode, dataset_iter):
             instance.append((this_qid, predicted_label, score, gold_label))
 
     dev_map, dev_mrr = evaluate(instance, dataset, test_mode, config.mode)
-    print(dev_map, dev_mrr)
+    return (dev_map, dev_mrr)
 
 # Run the model on the dev set
-predict(config.dataset, 'dev', dataset_iter=dev_iter)
+dev_map, dev_mrr = predict(config.dataset, 'dev', dataset_iter=dev_iter)
 
 # Run the model on the test set
-predict(config.dataset, 'test', dataset_iter=test_iter)
+test_map, test_mrr = predict(config.dataset, 'test', dataset_iter=test_iter)
+
+print("{}\t{}\t{}\t{}\t{}".format(args.trained_model, dev_map, dev_mrr, test_map, test_mrr))
